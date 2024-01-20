@@ -38,3 +38,11 @@ dotnet run --no-launch-profile --urls="https://localhost:7070"
 > chown -R gaos:gaos /opt/gaos/bin/Release/net7.0/publish
 ```
 
+# Init database on test server
+```
+> systemctl stop gaos.service
+> export ASPNETCORE_ENVIRONMENT=Test
+> dotnet ef database drop
+> dotnet ef database update
+> systemctl start gaos.service
+```
