@@ -25,6 +25,7 @@ namespace Gaos.Dbo
         public DbSet<BuildVersion> BuildVersion => Set<BuildVersion>();
         public DbSet<Device> Device => Set<Device>();
         public DbSet<Session> Session => Set<Session>();
+        public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
         public DbSet<ChatRoom> ChatRoom => Set<ChatRoom>();
         public DbSet<ChatRoomMember> ChatRoomMember => Set<ChatRoomMember>();
         public DbSet<ChatRoomMessage> ChatRoomMessage => Set<ChatRoomMessage>();
@@ -78,6 +79,9 @@ namespace Gaos.Dbo
 
             // Session
             modelBuilder.Entity<Session>().HasKey(e => e.Id);
+
+            // DataProtectionKey
+            modelBuilder.Entity<DataProtectionKey>().HasKey(e => e.Id);
 
 
             // ChatRoom

@@ -59,6 +59,9 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 builder.Host.UseSerilog();
 
+builder.Services.AddDataProtection()
+    .PersistKeysToDbContext<SampleDbContext>();
+
 if (builder.Configuration["guest_names_file_path"] == null)
 {
     throw new Exception("missing configuration value: guest_names_file_path");
