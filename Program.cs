@@ -69,7 +69,6 @@ if (builder.Configuration["guest_names_file_path"] == null)
 string guestNamesFilePath = builder.Configuration.GetValue<string>("guest_names_file_path");
 
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddDataProtection();
 
 builder.Services.AddScoped<Gaos.Auth.TokenService>(provider => {
     Db db = provider.GetService<Db>();
