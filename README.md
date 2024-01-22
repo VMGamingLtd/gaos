@@ -42,7 +42,7 @@ dotnet run --no-launch-profile --urls="https://localhost:7070"
 ```
 > systemctl stop gaos.service
 > export ASPNETCORE_ENVIRONMENT=Test
-> dotnet ef database drop
-> dotnet ef database update
+> cd scripts
+> ./migrate.sh
 > systemctl start gaos.service
 ```
