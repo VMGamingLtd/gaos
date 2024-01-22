@@ -4,8 +4,9 @@ namespace Gaos.Dbo
     using Microsoft.EntityFrameworkCore;
     using System.Xml;
     using Gaos.Dbo.Model;
+    using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 
-    public class Db : DbContext
+    public class Db : DbContext, IDataProtectionKeyContext
     {
         private IConfiguration Configuration;
         private IWebHostEnvironment Environment;
@@ -25,7 +26,7 @@ namespace Gaos.Dbo
         public DbSet<BuildVersion> BuildVersion => Set<BuildVersion>();
         public DbSet<Device> Device => Set<Device>();
         public DbSet<Session> Session => Set<Session>();
-        public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
+        public DbSet<Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey> DataProtectionKeys => Set<Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey>();
         public DbSet<ChatRoom> ChatRoom => Set<ChatRoom>();
         public DbSet<ChatRoomMember> ChatRoomMember => Set<ChatRoomMember>();
         public DbSet<ChatRoomMessage> ChatRoomMessage => Set<ChatRoomMessage>();
@@ -81,7 +82,7 @@ namespace Gaos.Dbo
             modelBuilder.Entity<Session>().HasKey(e => e.Id);
 
             // DataProtectionKey
-            modelBuilder.Entity<DataProtectionKey>().HasKey(e => e.Id);
+            modelBuilder.Entity<Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey>().HasKey(e => e.Id);
 
 
             // ChatRoom

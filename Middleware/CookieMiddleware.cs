@@ -32,20 +32,29 @@ namespace Gaos.Middleware
             }
             else
             {
-                sessionId = ReadCookieValue(context);
-
-                // Verify if sessionId exists in Session table
-                Dbo.Model.Session session = await db.Session.FirstOrDefaultAsync(s => s.Id == sessionId);
-                if (session == null)
+                try 
                 {
+                    sessionId = ReadCookieValue(context);
+                    // Verify if sessionId exists in Session table
+                    Dbo.Model.Session session = await db.Session.FirstOrDefaultAsync(s => s.Id == sessionId);
+                    if (session == null)
+                    {
+                        sessionId = await CreateNewCookie(context, db);
+                    }
+                    else
+                    {
+                        // Update session
+                        session.AccessedAt = DateTime.Now;
+                        await db.SaveChangesAsync();
+                    }
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, $"{CLASS_NAME}: {e.Message}");
+                    Log.Error($"{CLASS_NAME}: will create new cookie");
                     sessionId = await CreateNewCookie(context, db);
                 }
-                else
-                {
-                    // Update session
-                    session.AccessedAt = DateTime.Now;
-                    await db.SaveChangesAsync();
-                }
+
             }
 
             context.Items.Add(Gaos.Common.Context.HTTP_CONTEXT_KEY_SESSION_ID, sessionId);

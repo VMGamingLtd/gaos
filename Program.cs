@@ -60,7 +60,7 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 builder.Services.AddDataProtection()
-    .PersistKeysToDbContext<SampleDbContext>();
+    .PersistKeysToDbContext<Db>();
 
 if (builder.Configuration["guest_names_file_path"] == null)
 {
