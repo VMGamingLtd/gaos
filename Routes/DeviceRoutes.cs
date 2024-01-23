@@ -28,6 +28,7 @@ namespace Gaos.Routes
                 {
                     DeviceRegisterResponse response;
 
+
                     if (deviceRegisterRequest.Identification == null || deviceRegisterRequest.Identification.Trim().Length == 0)
                     {
                         response = new DeviceRegisterResponse
@@ -40,6 +41,9 @@ namespace Gaos.Routes
                     }
 
                     string platformType = deviceRegisterRequest.PlatformType;
+
+                    // log the device
+                    Log.Information($"{CLASS_NAME}:{METHOD_NAME}: identification: {deviceRegisterRequest.Identification}, platformType: {platformType}, buildVersion: {deviceRegisterRequest.BuildVersion}");
 
                     if (deviceRegisterRequest.BuildVersion == null || deviceRegisterRequest.BuildVersion.Trim().Length == 0)
                     {
