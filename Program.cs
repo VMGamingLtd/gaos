@@ -45,7 +45,8 @@ var dbServerVersion = new MariaDbServerVersion(new Version(dbMajorVersion, dbMin
 
 builder.Services.AddDbContext<Db>(opt => 
     opt.UseMySql(dbConnectionString, dbServerVersion)
-    .LogTo(Console.WriteLine, LogLevel.Information)
+    //.LogTo(Console.WriteLine, LogLevel.Information)
+    .LogTo(Console.WriteLine, LogLevel.Warning)
     .EnableSensitiveDataLogging()
     .EnableDetailedErrors()
 );
