@@ -1,6 +1,12 @@
 #pragma warning disable 8632
 namespace Gaos.Routes.Model.DeviceJson
 {
+    [System.Serializable]
+    public class DeviceRegisterResponseUserSlot
+    {
+        public int MongoDocumentId { get; set; }
+        public int SlotId { get; set; }
+    }
 
     [System.Serializable]
     public class DeviceRegisterResponse
@@ -15,6 +21,8 @@ namespace Gaos.Routes.Model.DeviceJson
 
         public Dbo.Model.User? User { get; set; }
         public Dbo.Model.JWT? JWT { get; set; }
+
+        public List<DeviceRegisterResponseUserSlot>? UserSlots { get; set; }
 
     }
 }

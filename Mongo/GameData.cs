@@ -19,7 +19,6 @@ namespace Gaos.Mongo
 
         public async Task SaveGameDataAsync(int userId, int slotId, string gameDataJson)
         {
-            Log.Error(" @@@@@@@@@@@@@@ SaveGameDataAsync: userId=" + userId + ", slotId=" + slotId + ", gameDataJson=" + gameDataJson);
             IMongoCollection<BsonDocument> collection = await MongoService.GetCollectionForGameData();
 
 
@@ -57,9 +56,44 @@ namespace Gaos.Mongo
                 return null;
             }
 
-            Log.Error(" @@@@@@@@@@@@@@ GetGameDataAsync: userId=" + userId + ", slotId=" + slotId + ", gameDataBson=" + gameDataBson.ToJson());
-
             return gameDataBson["GameData"].ToJson();
+        }
+
+        public class GetUserSlotIdsResult {
+            public int _id { get; set; }
+            public int UserId { get; set; }
+            public int SlotId { get; set; }
+        }
+
+        // For given user, get all users slots ids
+
+        public async Task<List<GetUserSlotIdsResult>> GetUserSlotIdsAsync(int userId)
+        {
+            IMongoCollection<BsonDocument> collection = await MongoService.GetCollectionForGameData();
+
+            var filter = Builders<BsonDocument>.Filter
+                .And(
+                    Builders<BsonDocument>.Filter.Eq("UserId", userId)
+                 );
+
+            var projection = Builders<BsonDocument>.Projection.Include("SlotId").Exclude("_id");
+
+            List<BsonDocument> gameDataBsonList = await collection.Find(filter).Project(projection).ToListAsync();
+
+            List<GetUserSlotIdsResult> slotIds = new List<GetUserSlotIdsResult>();
+
+            foreach (BsonDocument gameDataBson in gameDataBsonList)
+            {
+
+                // slotIds.Add(gameDataBson["SlotId"].ToInt32());
+                slotIds.Add(new GetUserSlotIdsResult {
+                    _id = gameDataBson["_id"].ToInt32(),
+                    UserId = userId,
+                    SlotId = gameDataBson["SlotId"].ToInt32()
+                });
+            }
+
+            return slotIds;
         }
     }
 }
