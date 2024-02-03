@@ -45,7 +45,8 @@ var dbServerVersion = new MariaDbServerVersion(new Version(dbMajorVersion, dbMin
 
 builder.Services.AddDbContext<Db>(opt => 
     opt.UseMySql(dbConnectionString, dbServerVersion)
-    .LogTo(Console.WriteLine, LogLevel.Information)
+    //.LogTo(Console.WriteLine, LogLevel.Information)
+    .LogTo(Console.WriteLine, LogLevel.Warning)
     .EnableSensitiveDataLogging()
     .EnableDetailedErrors()
 );
@@ -54,10 +55,12 @@ builder.Services.AddDbContext<Db>(opt =>
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Warning)
     .WriteTo.Console()
     .WriteTo.Debug()
     .CreateLogger();
 builder.Host.UseSerilog();
+builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning);
 
 builder.Services.AddDataProtection()
     .PersistKeysToDbContext<Db>();

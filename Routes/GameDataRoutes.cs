@@ -13,6 +13,52 @@ namespace Gaos.Routes
         public static RouteGroupBuilder GroupGameData(this RouteGroupBuilder group)
         {
 
+            group.MapPost("/ensureNewSlot", async (EnsureNewSlotRequest request, Db db, Gaos.Common.UserService userService, Gaos.Mongo.GameData gameDataService) =>
+            {
+                const string METHOD_NAME = "ensureNewSlot()";
+                try 
+                {
+                    EnsureNewSlotResponse response;
+                    int userId = request.UserId;
+                    int slotId = request.SlotId;
+
+                    if (userId != userService.GetUserId())
+                    {
+                        response = new EnsureNewSlotResponse
+                        {
+                            IsError = true,
+                            ErrorMessage = "request.UserId does not match user id of authorized user"
+                        };
+                        Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: request.UserId does not match user id of authorized user");
+                        return Results.Json(response);
+                    
+                    }
+
+                    // Ensure new slot
+                    await gameDataService.EnsureNewGameSlot(userId, slotId, userService.GetUser().Name);
+
+                    response = new EnsureNewSlotResponse
+                    {
+                        IsError = false,
+                        ErrorMessage = "",
+                    };
+
+                    return Results.Json(response);
+
+
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
+                    EnsureNewSlotResponse response = new EnsureNewSlotResponse
+                    {
+                        IsError = true,
+                        ErrorMessage = "internal error",
+                    };
+                    return Results.Json(response);
+                }
+            });
+
             group.MapPost("/userGameDataGet", async (UserGameDataGetRequest request, Db db, Gaos.Common.UserService userService, Gaos.Mongo.GameData gameDataService) => 
             {
                 const string METHOD_NAME = "userGameDataGet()";
@@ -31,8 +77,8 @@ namespace Gaos.Routes
                         };
                         Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: request.UserId does not match user id of authorized user");
                         return Results.Json(response);
+                    
                     }
-
 
                     // GaDataJson
 
@@ -68,8 +114,6 @@ namespace Gaos.Routes
                 try 
                 {
                     UserGameDataSaveResponse response;
-
-                    // Check if slot id in range
 
                     if (request.UserId != userService.GetUserId())
                     {

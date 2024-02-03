@@ -13,6 +13,7 @@ namespace Gaos.Routes.Model.UserJson
         public RecoverPasswordVerifyCodeReplyErrorKind? ErrorKind { get; set; }
 
         public int? UserId { get; set; }
+        public string? UserName { get; set; }
         public bool? IsVerified { get; set; }
     }
 }

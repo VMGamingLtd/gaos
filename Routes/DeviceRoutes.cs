@@ -142,14 +142,19 @@ namespace Gaos.Routes
                     if (response.User != null)
                     {
                         List<GetUserSlotIdsResult> userSlots = await gameData.GetUserSlotIdsAsync(response.User.Id);
-                        List<DeviceRegisterResponseUserSlot> deviceRegisterResponseUserSlots = new List<DeviceRegisterResponseUserSlot>();
+                        DeviceRegisterResponseUserSlot[] deviceRegisterResponseUserSlots = new DeviceRegisterResponseUserSlot[userSlots.Count];
                         for (int i = 0; i < userSlots.Count; i++)
                         {
-                            deviceRegisterResponseUserSlots.Add(new DeviceRegisterResponseUserSlot
+                            deviceRegisterResponseUserSlots[i] = new DeviceRegisterResponseUserSlot
                             {
                                 MongoDocumentId = userSlots[i]._id,
                                 SlotId = userSlots[i].SlotId,
-                            });
+
+                                UserName = userSlots[i].UserName,
+                                Seconds = userSlots[i].Seconds,
+                                Minutes = userSlots[i].Minutes,
+                                Hours = userSlots[i].Hours,
+                            };
                         }
                         response.UserSlots = deviceRegisterResponseUserSlots;
                     }

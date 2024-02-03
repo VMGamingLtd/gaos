@@ -15,6 +15,45 @@ namespace Gaos.Mongo
             MongoService = mongoService;
         }
 
+        public async Task EnsureNewGameSlot(int userId, int slotId, string userName)
+        {
+
+            BsonDocument gameData = new BsonDocument
+            {
+                { "username", userName },
+                { "seconds", 0 },
+                { "minutes", 0 },
+                { "hours", 0 }
+            };
+
+            BsonDocument doc = new BsonDocument
+            {
+                { "UserId", userId },
+                { "SlotId", slotId },
+                { "IsNewSlot", true },
+                { "GameData", gameData }
+            };
+
+            // Check if document with same userId and slotId already exists
+            IMongoCollection<BsonDocument> collection = await MongoService.GetCollectionForGameData();
+            var filter = Builders<BsonDocument>.Filter
+                .And(
+                    Builders<BsonDocument>.Filter.Eq("UserId", userId),
+                    Builders<BsonDocument>.Filter.Eq("SlotId", slotId)
+                 );
+            BsonDocument gameDataBsonExisting = await collection.Find(filter).FirstOrDefaultAsync();
+            if (gameDataBsonExisting != null)
+            {
+                // Notthing to do, game slot already exists
+                return;
+            }
+            else
+            {
+                // Insert new document
+                await collection.InsertOneAsync(doc);
+            }
+        }
+
         // Save the game data to the database at the specified slot for the specified user.
 
         public async Task SaveGameDataAsync(int userId, int slotId, string gameDataJson)
@@ -60,9 +99,14 @@ namespace Gaos.Mongo
         }
 
         public class GetUserSlotIdsResult {
-            public int _id { get; set; }
+            public string _id { get; set; }
             public int UserId { get; set; }
             public int SlotId { get; set; }
+
+            public string UserName { get; set; }
+            public int Seconds { get; set; }
+            public int Minutes { get; set; }
+            public int Hours { get; set; }
         }
 
         // For given user, get all users slots ids
@@ -76,7 +120,14 @@ namespace Gaos.Mongo
                     Builders<BsonDocument>.Filter.Eq("UserId", userId)
                  );
 
-            var projection = Builders<BsonDocument>.Projection.Include("SlotId").Exclude("_id");
+            var projection = Builders<BsonDocument>.Projection
+                .Include("SlotId")
+                .Include("IsNewSlot")
+                .Include("GameData.username")
+                .Include("GameData.seconds")
+                .Include("GameData.minutes")
+                .Include("GameData.hours")
+                ;
 
             List<BsonDocument> gameDataBsonList = await collection.Find(filter).Project(projection).ToListAsync();
 
@@ -84,12 +135,25 @@ namespace Gaos.Mongo
 
             foreach (BsonDocument gameDataBson in gameDataBsonList)
             {
+                var doc = gameDataBson["GameData"].AsBsonDocument;
+
+                bool IsNewSlot = false;
+                if (gameDataBson.Contains("IsNewSlot"))
+                {
+                    IsNewSlot = gameDataBson["IsNewSlot"].ToBoolean();
+                }
 
                 // slotIds.Add(gameDataBson["SlotId"].ToInt32());
                 slotIds.Add(new GetUserSlotIdsResult {
-                    _id = gameDataBson["_id"].ToInt32(),
+                    _id = gameDataBson["_id"].ToString(),
                     UserId = userId,
-                    SlotId = gameDataBson["SlotId"].ToInt32()
+                    SlotId = gameDataBson["SlotId"].ToInt32(),
+
+
+                    UserName = doc["username"].ToString(),
+                    Seconds = doc["seconds"].ToInt32(),
+                    Minutes = doc["minutes"].ToInt32(),
+                    Hours = doc["hours"].ToInt32()
                 });
             }
 

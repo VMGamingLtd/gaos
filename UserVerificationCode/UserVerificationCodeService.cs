@@ -128,7 +128,7 @@ namespace Gaos.UserVerificationCode
 
         private bool _VerifyCode(int userId, string code, bool isRemove)
         {
-            var userCount = db.UserVerificationCode.Where(x => x.UserId == userId && x.Code == code && x.ExpiresAt > DateTime.Now).Count();
+            var userCount = db.UserVerificationCode.Where(x => x.UserId == userId && x.Code.ToLower() == code.ToLower() && x.ExpiresAt > DateTime.Now).Count();
 
             if (userCount < 1)
             {
