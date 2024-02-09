@@ -60,6 +60,7 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.Debug()
     .CreateLogger();
 builder.Host.UseSerilog();
+builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning);
 
 builder.Services.AddDataProtection()
     .PersistKeysToDbContext<Db>();

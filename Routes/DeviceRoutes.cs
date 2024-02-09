@@ -9,6 +9,8 @@ using Gaos.Dbo;
 using Gaos.Routes.Model.DeviceJson;
 using Gaos.Dbo.Model;
 using Gaos.Common;
+using Gaos.Mongo;
+using static Gaos.Mongo.GameData;
 
 namespace Gaos.Routes
 {
@@ -21,7 +23,7 @@ namespace Gaos.Routes
         {
             group.MapGet("/hello", (Db db) => "hello");
 
-            group.MapPost("/register", async (DeviceRegisterRequest deviceRegisterRequest, Db db, UserService userSerice) =>
+            group.MapPost("/register", async (DeviceRegisterRequest deviceRegisterRequest, Db db, UserService userSerice, HttpContext context, GameData gameData) =>
             {
                 const string METHOD_NAME = "device/register";
                 try
@@ -39,11 +41,42 @@ namespace Gaos.Routes
                         };
                         return Results.Json(response);
                     }
+                    
+                    string identification = deviceRegisterRequest.Identification;
+                    bool isCookie = false;
+
+                    // If the device identification equals 'n/a' use session cookie
+                    if (deviceRegisterRequest.Identification == "n/a")
+                    {
+                        if (context.Items.ContainsKey(Gaos.Common.Context.HTTP_CONTEXT_KEY_SESSION_ID))
+                        {
+                            int sessionId = (int)context.Items[Gaos.Common.Context.HTTP_CONTEXT_KEY_SESSION_ID];
+                            Dbo.Model.Session session = await db.Session.FirstOrDefaultAsync(s => s.Id == sessionId);
+                            if (session != null)
+                            {
+                                identification = session.Id.ToString();
+                                isCookie = true;
+
+                            }
+                        }
+                        else
+                        {
+                            // report error - no device identification
+                            response = new DeviceRegisterResponse
+                            {
+                                IsError = true,
+                                ErrorMessage = "no device identification",
+
+                            };
+                            return Results.Json(response);
+                        }
+                    }
+
 
                     string platformType = deviceRegisterRequest.PlatformType;
 
                     // log the device
-                    Log.Information($"{CLASS_NAME}:{METHOD_NAME}: identification: {deviceRegisterRequest.Identification}, platformType: {platformType}, buildVersion: {deviceRegisterRequest.BuildVersion}");
+                    Log.Information($"{CLASS_NAME}:{METHOD_NAME}: identification: {identification} (using cookie: {isCookie}), platformType: {platformType}, buildVersion: {deviceRegisterRequest.BuildVersion}");
 
                     if (deviceRegisterRequest.BuildVersion == null || deviceRegisterRequest.BuildVersion.Trim().Length == 0)
                     {
@@ -58,14 +91,14 @@ namespace Gaos.Routes
 
 
                     BuildVersion buildVersion = await db.BuildVersion.FirstOrDefaultAsync(b => b.Version == deviceRegisterRequest.BuildVersion);
-                    Device device = await db.Device.FirstOrDefaultAsync(d => d.Identification == deviceRegisterRequest.Identification && d.PlatformType == platformType);
+                    Device device = await db.Device.FirstOrDefaultAsync(d => d.Identification == identification && d.PlatformType == platformType);
                     (Dbo.Model.User?, Dbo.Model.JWT?) user_jwt = (null, null);
 
                     if (device == null)
                     {
                         device = new Device
                         {
-                            Identification = deviceRegisterRequest.Identification,
+                            Identification = identification,
                             PlatformType = platformType,
                             BuildVersionId = (buildVersion != null) ? buildVersion.Id : null,
                             BuildVersionReported = deviceRegisterRequest.BuildVersion,
@@ -77,13 +110,15 @@ namespace Gaos.Routes
                     } else {
                         user_jwt  = userSerice.GetDeviceUser(device.Id);
 
-                        device.Identification = deviceRegisterRequest.Identification;
+                        device.Identification = identification;
                         device.PlatformType = platformType;
                         device.BuildVersionId = (buildVersion != null) ? buildVersion.Id : null;
                         device.BuildVersionReported = deviceRegisterRequest.BuildVersion;
 
                         await db.SaveChangesAsync();
                     }
+
+
 
 
                     response = new DeviceRegisterResponse
@@ -103,6 +138,27 @@ namespace Gaos.Routes
                         response.User.PasswordSalt = null;
                     }
 
+                    // Get user slots
+                    if (response.User != null)
+                    {
+                        List<GetUserSlotIdsResult> userSlots = await gameData.GetUserSlotIdsAsync(response.User.Id);
+                        DeviceRegisterResponseUserSlot[] deviceRegisterResponseUserSlots = new DeviceRegisterResponseUserSlot[userSlots.Count];
+                        for (int i = 0; i < userSlots.Count; i++)
+                        {
+                            deviceRegisterResponseUserSlots[i] = new DeviceRegisterResponseUserSlot
+                            {
+                                MongoDocumentId = userSlots[i]._id,
+                                SlotId = userSlots[i].SlotId,
+
+                                UserName = userSlots[i].UserName,
+                                Seconds = userSlots[i].Seconds,
+                                Minutes = userSlots[i].Minutes,
+                                Hours = userSlots[i].Hours,
+                            };
+                        }
+                        response.UserSlots = deviceRegisterResponseUserSlots;
+                    }
+
                     return Results.Json(response);
                 }
                 catch (Exception ex)
@@ -118,7 +174,7 @@ namespace Gaos.Routes
 
             });
 
-            group.MapPost("/getRegistartion", async (DeviceGetRegistrationRequest deviceGetRegistrationRequest, Db db) =>
+            group.MapPost("/getRegistartion", async (DeviceGetRegistrationRequest deviceGetRegistrationRequest, Db db, HttpContext context) =>
             {
                 const string METHOD_NAME = "device/getRegistartion";
                 try
@@ -135,9 +191,36 @@ namespace Gaos.Routes
                         return Results.Json(response);
                     }
 
+                    string identification = deviceGetRegistrationRequest.Identification;
+
+                    // If the device identification equals 'n/a' use session cookie
+                    if (deviceGetRegistrationRequest.Identification == "n/a")
+                    {
+                        if (context.Items.ContainsKey(Gaos.Common.Context.HTTP_CONTEXT_KEY_SESSION_ID))
+                        {
+                            int sessionId = (int)context.Items[Gaos.Common.Context.HTTP_CONTEXT_KEY_SESSION_ID];
+                            Dbo.Model.Session session = await db.Session.FirstOrDefaultAsync(s => s.Id == sessionId);
+                            if (session != null)
+                            {
+                                identification = session.Id.ToString();
+                            }
+                        }
+                        else
+                        {
+                            // report error - no device identification
+                            response = new DeviceGetRegistrationResponse
+                            {
+                                IsError = true,
+                                ErrorMessage = "no device identification",
+
+                            };
+                            return Results.Json(response);
+                        }
+                    }
+
                     string platformType = deviceGetRegistrationRequest.PlatformType;
 
-                    Device device = await db.Device.FirstOrDefaultAsync(d => d.Identification == deviceGetRegistrationRequest.Identification && d.PlatformType == platformType);
+                    Device device = await db.Device.FirstOrDefaultAsync(d => d.Identification == identification && d.PlatformType == platformType);
                     if (device == null)
                     {
                         response = new DeviceGetRegistrationResponse

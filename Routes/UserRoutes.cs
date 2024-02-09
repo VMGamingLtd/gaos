@@ -717,12 +717,31 @@ namespace Gaos.Routes
                 const string METHOD_NAME = "/recoverPassword/verifyCode";
                 try
                 {
+                    RecoverPasswordVerifyCodeResponse response;
+
                     bool isVerified = userVerificationCodeService.VerifyCode(request.UserId, request.VerificationCode, false, false);
-                    RecoverPasswordVerifyCodeResponse response = new RecoverPasswordVerifyCodeResponse
+
+                    // Get the user 
+                    User user = db.User.FirstOrDefault(u => u.Id == request.UserId);
+                    if (user == null)
+                    {
+                        Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: user not found");
+                        response = new RecoverPasswordVerifyCodeResponse
+                        {
+                            IsError = true,
+                            ErrorMessage = "internal error",
+                            ErrorKind = RecoverPasswordVerifyCodeReplyErrorKind.InternalError,
+                        };
+                        return Results.Json(response);
+                    }
+
+
+                    response = new RecoverPasswordVerifyCodeResponse
                     {
                         IsError = false,
 
                         UserId = request.UserId,
+                        UserName = user.Name,
                         IsVerified = isVerified,
                     };
                     return Results.Json(response);
