@@ -1,0 +1,9 @@
+Migrations/
+
+obj/
+bin/
+.venv/
+.vs/
+.vscode/
+*.swp
+.idea

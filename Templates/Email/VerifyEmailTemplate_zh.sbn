@@ -1,0 +1,1 @@
+<a href="{{ verifyEmailUrl }}"> 请点击此链接来验证您的电子邮件。</a>

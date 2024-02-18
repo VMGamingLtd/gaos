@@ -1,0 +1,17 @@
+[Unit]
+Description=MyService Description
+
+[Service]
+WorkingDirectory=/opt/gaos/bin/Release/net7.0/publish
+ExecStart=/usr/bin/dotnet /opt/gaos/bin/Release/net7.0/publish/gaos.dll
+Restart=always
+# Restart service after 10 seconds if the dotnet service crashes:
+RestartSec=10
+KillSignal=SIGINT
+SyslogIdentifier=log.gaos
+User=gaos
+TimeoutStopSec=30
+Environment=ASPNETCORE_ENVIRONMENT=Test
+
+[Install]
+WantedBy=multi-user.target

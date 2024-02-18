@@ -1,0 +1,9 @@
+useradd -r gaos
+groupadd gaos
+
+
+-------------
+
+CREATE USER 'gaos'@'127.0.0.1' IDENTIFIED BY 'Rychly6528KonikNaLuke';
+GRANT ALL PRIVILEGES ON gaos.* TO 'gaos'@'127.0.0.1' WITH GRANT OPTION;
+-------------

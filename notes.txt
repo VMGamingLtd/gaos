@@ -1,0 +1,9 @@
+C:\w1\gao\Assets\Scripts\CoroutineManager.cs
+IEnumerator WaitForLoadingBar () {
+
+-------------------
+
+
+C:\w1\gao\Assets\Scripts\GuestLogin.cs
+   public void OnButtonClick()
+-------------------
