@@ -45,6 +45,13 @@ namespace Gaos.Mongo
             return client;
         }
 
+        public async Task<IClientSessionHandle> StartSessionAsync()
+        {
+            var client = GetClient();
+            var session = await client.StartSessionAsync();
+            return session;
+        }
+
         private IMongoDatabase GetDatabaseForGameData()
         {
             MongoClient client = GetClient();

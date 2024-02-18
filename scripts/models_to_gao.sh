@@ -63,11 +63,21 @@ function copy_models_to()
     $root_path/Routes/Model
 }
 
+function copy_jsondiff()
+{
+  local root_path=../../gao/Assets/Scripts/Gaos
+
+  rm -rf $root_path/jsondiff
+  cp -r ../jsondiff $root_path/jsondiff
+}
+
 
 # copy models to gao
 copy_models_to ../../gao/Assets/Scripts/Gaos
 
 # copy models to gaoa
 copy_models_to ../../gaoa/gaoa
+
+copy_jsondiff
 
 

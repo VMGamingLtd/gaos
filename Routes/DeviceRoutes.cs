@@ -148,6 +148,7 @@ namespace Gaos.Routes
                             deviceRegisterResponseUserSlots[i] = new DeviceRegisterResponseUserSlot
                             {
                                 MongoDocumentId = userSlots[i]._id,
+                                MongoDocumentVersion = userSlots[i]._version,
                                 SlotId = userSlots[i].SlotId,
 
                                 UserName = userSlots[i].UserName,

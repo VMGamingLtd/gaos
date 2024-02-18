@@ -67,6 +67,7 @@ namespace Gaos.Routes
                     UserGameDataGetResponse response;
                     int userId = request.UserId;
                     int slotId = request.SlotId;
+                    string version = request.Version; // note: version is optional, if null then no error reported if document version in mongodb does not match with requested version
 
                     if (userId != userService.GetUserId())
                     {
@@ -80,16 +81,26 @@ namespace Gaos.Routes
                     
                     }
 
-                    // GaDataJson
+                    var result = await gameDataService.GetGameDataAsync(userId, slotId, version);
 
-                    string gameDataJson = await gameDataService.GetGameDataAsync(userId, slotId);
+                    if (result.IsError)
+                    {
+                        response = new UserGameDataGetResponse
+                        {
+                            IsError = true,
+                            ErrorMessage = result.ErrorMessage,
+                        };
+                        return Results.Json(response);
+                    }
 
                     response = new UserGameDataGetResponse
                     {
                         IsError = false,
                         ErrorMessage = "",
 
-                        GameDataJson = gameDataJson,
+                        Id = result.Id,
+                        Version = result.Version,
+                        GameDataJson = result.GameDataJson,
                     };
 
                     return Results.Json(response);
@@ -126,10 +137,53 @@ namespace Gaos.Routes
                         return Results.Json(response);
                     }
 
+                    if (request.GameDataJson == null)
+                    {
+                        response = new UserGameDataSaveResponse
+                        {
+                            IsError = true,
+                            ErrorMessage = "request.GameDataJson is null"
+                        };
+                        Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: request.GameDataJson is null");
+                        return Results.Json(response);
+                    }
+
+                    if (request.IsGameDataDiff == null)
+                    {
+                        response = new UserGameDataSaveResponse
+                        {
+                            IsError = true,
+                            ErrorMessage = "request.IsGameDataDiff is null"
+                        };
+                        Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: request.IsGameDataDiff is null");
+                        return Results.Json(response);
+                    }
+                    bool isGameDataDiff = (bool)request.IsGameDataDiff;
+
 
                     try
-                    {
-                        await gameDataService.SaveGameDataAsync(userService.GetUserId(), request.SlotId, request.GameDataJson);
+                        {
+                        var result = await gameDataService.SaveGameDataAsync(userService.GetUserId(), request.SlotId, request.GameDataJson, request.Version, isGameDataDiff);
+                        if (result.IsError)
+                        {
+                            response = new UserGameDataSaveResponse
+                            {
+                                IsError = true,
+                                ErrorMessage = result.ErrorMessage,
+                            };
+                            return Results.Json(response);
+                        }
+
+                        response = new UserGameDataSaveResponse
+                        {
+                            IsError = false,
+                            ErrorMessage = "",
+
+                            Id = result.Id,
+                            Version = result.Version,
+
+                        };
+                        return Results.Json(response);
                     }
                     catch (Exception ex)
                     {
@@ -138,12 +192,6 @@ namespace Gaos.Routes
                     }   
 
 
-                    response = new UserGameDataSaveResponse
-                    {
-                        IsError = false,
-                        ErrorMessage = "",
-                    };
-                    return Results.Json(response);
                 }
                 catch (Exception ex)
                 {
