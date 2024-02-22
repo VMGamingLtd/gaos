@@ -35,12 +35,15 @@ namespace Gaos.Routes
                     }
 
                     // Ensure new slot
-                    await gameDataService.EnsureNewGameSlot(userId, slotId, userService.GetUser().Name);
+                    var resulult = await gameDataService.EnsureNewGameSlot(userId, slotId, userService.GetUser().Name);
 
                     response = new EnsureNewSlotResponse
                     {
                         IsError = false,
                         ErrorMessage = "",
+
+                        MongoDocumentId = resulult.Id,
+                        MongoDocumentVersion = resulult.Version,
                     };
 
                     return Results.Json(response);
