@@ -39,7 +39,16 @@ namespace Gaos.Mongo
             MongoService = mongoService;
         }
 
-        public async Task EnsureNewGameSlot(int userId, int slotId, string userName)
+        public class EnsureNewSlotResult
+        {
+            public bool IsError { get; set; }
+            public string ErrorMessage { get; set; }
+
+            public string Id { get; set; }
+            public string Version { get; set; }
+        }
+
+        public async Task<EnsureNewSlotResult> EnsureNewGameSlot(int userId, int slotId, string userName)
         {
             var _version = "0";
 
@@ -71,13 +80,24 @@ namespace Gaos.Mongo
             if (gameDataBsonExisting != null)
             {
                 // Notthing to do, game slot already exists
-                return;
+                return new EnsureNewSlotResult
+                {
+                    IsError = false,
+                    Id = gameDataBsonExisting["_id"].ToString(),
+                    Version = gameDataBsonExisting["_version"].ToString(),
+                };
             }
             else
             {
                 // Insert new document
                 await collection.InsertOneAsync(doc);
-                return;
+                gameDataBsonExisting = await collection.Find(filter).FirstOrDefaultAsync();
+                return new EnsureNewSlotResult
+                {
+                    IsError = false,
+                    Id = gameDataBsonExisting["_id"].ToString(),
+                    Version = gameDataBsonExisting["_version"].ToString(),
+                };
             }
         }
 
