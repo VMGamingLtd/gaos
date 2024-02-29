@@ -312,6 +312,10 @@ namespace jsondiff
                 if (objA[prop].Type == JTokenType.Object)
                 {
                     var diffs = CompareObjectValues(objA[prop], objB[prop]);
+                    if (diffs == null)
+                    {
+                        return null;
+                    }
                     var diff = new DiffValue
                     {
                         Type = DiffType.MergeObjects,
@@ -323,6 +327,10 @@ namespace jsondiff
                 else if (objA[prop].Type == JTokenType.Array)
                 {
                     var diffs = CompareArrayValues(objA[prop], objB[prop]);
+                    if (diffs == null)
+                    {
+                        return null;
+                    }
                     var diff = new DiffValue
                     {
                         Type = DiffType.MergeArrays,
@@ -391,6 +399,10 @@ namespace jsondiff
                         if (arrA[index].Type == JTokenType.Object)
                         {
                             var diffs = CompareObjectValues(arrA[index], arrB[index]);
+                            if (diffs == null)
+                            {
+                                return null;
+                            }
                             var diff = new DiffValue
                             {
                                 Type = DiffType.MergeObjects,
@@ -402,6 +414,10 @@ namespace jsondiff
                         else if (arrA[index].Type == JTokenType.Array)
                         {
                             var diffs = CompareArrayValues(arrA[index], arrB[index]);
+                            if (diffs == null)
+                            {
+                                return null;
+                            }
                             var diff = new DiffValue
                             {
                                 Type = DiffType.MergeArrays,
@@ -450,12 +466,14 @@ namespace jsondiff
                 var diff = CompareObjectValueAtProperty(valA, valB, property.Name);
                 if (diff != null)
                 {
-                    Console.WriteLine(property.Name);
-                    Console.WriteLine(diff.Diff.Type);
-
                     diffs.Add(diff);
                 }
 
+            }
+
+            if (diffs.Count == 0)
+            {
+                return null;
             }
 
             return diffs;
@@ -480,6 +498,11 @@ namespace jsondiff
                 }
             }
 
+            if (diffs.Count == 0)
+            {
+                return null;
+            }
+
             return diffs;
         }
 
@@ -500,6 +523,10 @@ namespace jsondiff
                 if (valA.Type == JTokenType.Object)
                 {
                     var diffs = CompareObjectValues(valA, valB);
+                    if (diffs == null)
+                    {
+                        return null;
+                    }
                     var diff = new DiffValue
                     {
                         Type = DiffType.MergeObjects,
@@ -511,6 +538,10 @@ namespace jsondiff
                 else if (valA.Type == JTokenType.Array)
                 {
                     var diffs = CompareArrayValues(valA, valB);
+                    if (diffs == null)
+                    {
+                        return null;
+                    }
                     var diff = new DiffValue
                     {
                         Type = DiffType.MergeArrays,
@@ -616,7 +647,10 @@ namespace jsondiff
 
         public static JToken AddDiff(JToken val, DiffValue diff)
         {
-            if (diff.Type == DiffType.Add)
+            if (diff == null)
+            {
+                return val;
+            } else if (diff.Type == DiffType.Add)
             {
                 return diff.Value;
             }
