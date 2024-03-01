@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.DataProtection;
 using System;
 
-if (true) {
+if (false) {
     gaos.Tests.Test.TestAll();
     Console.WriteLine("Press any key to exit program");
     Console.ReadKey();
