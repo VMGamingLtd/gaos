@@ -8,8 +8,8 @@ namespace gaos.Tests
     {
         static void TestJsonDiff()
         {
-            string jsonA = @"{ 'name': 'Alice', 'age': 30, 'city': 'New York', 'hobbies': ['reading', 'coding', 'dancing'] }";
-            string jsonB = @"{ 'name': 'Alice', 'age': 35, 'state': 'NY', 'hobbies': ['reading', 'coding'] }";
+            string jsonA = @"{ 'name': 'Alice', 'age': 30, 'city': 'New York', 'hobbies': ['reading', 'coding', 'dancing', 'flying'] }";
+            string jsonB = @"{ 'name': 'Alice', 'age': 35, 'state': 'NY', 'hobbies': ['reading', 'coding', 'hiking'] }";
 
             JObject objA = JObject.Parse(jsonA);
             JObject objB = JObject.Parse(jsonB);

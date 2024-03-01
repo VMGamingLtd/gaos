@@ -569,6 +569,140 @@ namespace jsondiff
             }
         }
 
+        private static bool IsEqualArrayValues(JToken valA, JToken valB)
+        {
+            var arrA = (JArray)valA;
+            var arrB = (JArray)valB;
+
+            var count = Math.Max(arrA.Count, arrB.Count);
+
+            for (int i = 0; i < count; i++)
+            {
+                if (i >= arrA.Count)
+                {
+                    return false;
+                }
+                if (i >= arrB.Count)
+                {
+                    return false;
+                }
+                if (arrA[i].Type != arrB[i].Type)
+                {
+                    return false;
+                }
+                if (arrA[i].Type == JTokenType.Object)
+                {
+                    var isEqual = IsEqualObjectValues(arrA[i], arrB[i]);
+                    if (!isEqual)
+                    {
+                        return false;
+                    }
+                }
+                else if (arrA[i].Type == JTokenType.Array)
+                {
+                    var isEqual = IsEqualArrayValues(arrA[i], arrB[i]);
+                    if (!isEqual)
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    if (arrA[i].ToString() != arrB[i].ToString())
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        private static bool IsEqualObjectValues(JToken valA, JToken valB)
+        {
+
+            var objA = (JObject)valA;
+            var objB = (JObject)valB;
+
+            var objAProperties = objA.Properties();
+            foreach (var property in objAProperties)
+            {
+                if (objB[property.Name] == null)
+                {
+                    return false;
+                }
+                if (objA[property.Name].Type != objB[property.Name].Type)
+                {
+                    return false;
+                }
+                if (objA[property.Name].Type == JTokenType.Object)
+                {
+                    var isEqual = IsEqualObjectValues(objA[property.Name], objB[property.Name]);
+                    if (!isEqual)
+                    {
+                        return false;
+                    }
+                }
+                else if (objA[property.Name].Type == JTokenType.Array)
+                {
+                    var isEqual = IsEqualArrayValues(objA[property.Name], objB[property.Name]);
+                    if (!isEqual)
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    if (objA[property.Name].ToString() != objB[property.Name].ToString())
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            var objBProperties = objB.Properties();
+            foreach (var property in objBProperties)
+            {
+                if (objA[property.Name] == null)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        public static bool IsEqualValues(JToken valA, JToken valB)
+        {
+            if (valA.Type != valB.Type)
+            {
+                return false;
+            }
+            else
+            {
+                if (valA.Type == JTokenType.Object)
+                {
+                    var isEqual = IsEqualObjectValues(valA, valB);
+                    return isEqual;
+                }
+                else if (valA.Type == JTokenType.Array)
+                {
+                    var isEqual = IsEqualArrayValues(valA, valB);
+                    return isEqual;
+                }
+                else
+                {
+                    if (valA.ToString() != valB.ToString())
+                    {
+                        return false;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
+
         private static JToken MergeArrays(JToken val, List<DiffValueAtIndex> diffs)
         {
             if (val.Type != JTokenType.Array)
