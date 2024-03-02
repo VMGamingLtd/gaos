@@ -185,6 +185,8 @@ namespace Gaos.Routes
                             Id = result.Id,
                             Version = result.Version,
 
+                            GameDataJson = result.GameDataJson,
+
                         };
                         return Results.Json(response);
                     }

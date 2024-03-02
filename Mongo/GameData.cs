@@ -24,6 +24,8 @@ namespace Gaos.Mongo
 
         public bool IsError { get; set; }
         public string ErrorMessage { get; set; }
+
+        public string GameDataJson { get; set; }
     }
 
 
@@ -165,11 +167,25 @@ namespace Gaos.Mongo
 
                     await collection.UpdateOneAsync(filter, update, options);
 
-                    return new SaveGameDataAsyncResult
+                    if (Common.Context.IS_DEBUG && Common.Context.IS_DEBUG_SEND_GAMEDATA_ON_SAVE)
                     {
-                        IsError = false,
-                        Version = _version.ToString()
-                    };
+                        doc = await collection.Find(filter).FirstOrDefaultAsync();
+                        return new SaveGameDataAsyncResult
+                        {
+                            IsError = false,
+                            Version = _version.ToString(),
+                            GameDataJson = doc["GameData"].ToJson() 
+                        };
+                    }
+                    else
+                    {
+
+                        return new SaveGameDataAsyncResult
+                        {
+                            IsError = false,
+                            Version = _version.ToString()
+                        };
+                    }
                 }
                 else
                 {
@@ -222,12 +238,26 @@ namespace Gaos.Mongo
 
                     await collection.UpdateOneAsync(filter, update);
 
-                    return new SaveGameDataAsyncResult
+                    if (Common.Context.IS_DEBUG && Common.Context.IS_DEBUG_SEND_GAMEDATA_ON_SAVE)
                     {
-                        IsError = false,
-                        Id = docId,
-                        Version = _version.ToString()
-                    };
+                        doc = await collection.Find(filter).FirstOrDefaultAsync();
+                        return new SaveGameDataAsyncResult
+                        {
+                            IsError = false,
+                            Id = docId,
+                            Version = _version.ToString(),
+                            GameDataJson = doc["GameData"].ToJson()
+                        };
+                    }
+                    else
+                    {
+                        return new SaveGameDataAsyncResult
+                        {
+                            IsError = false,
+                            Id = docId,
+                            Version = _version.ToString()
+                        };
+                    }
 
                 }
 
