@@ -34,9 +34,26 @@ namespace gaos.Tests
 
         }
 
+        static void TestJsonIsEqual()
+        {
+            string jsonA = @"{ 'name': 'Alice', 'age': 30, 'city': 'New York', 'hobbies': ['reading', 'coding', 'dancing', 'flying'] }";
+            string jsonB = @"{ 'age': 30, 'city': 'New York', 'name': 'Alice', 'hobbies': ['reading', 'flying', 'dancing', 'coding'] }";
+            //string jsonB = @"{ 'name': 'Alice', 'age': 35, 'state': 'NY', 'hobbies': ['reading', 'coding', 'hiking'] }";
+
+            JObject objA = JObject.Parse(jsonA);
+            JObject objB = JObject.Parse(jsonB);
+
+            var result = Difference.IsEqualValues(objA, objB);
+            Console.WriteLine($"{result.IsEqual}, {result.PropertyPath}");
+
+            Console.WriteLine("finished ok");
+
+        }
+
         public static void TestAll() {
             if (true) {
-                TestJsonDiff();
+                //TestJsonDiff();
+                TestJsonIsEqual();
             }
         }
     }
