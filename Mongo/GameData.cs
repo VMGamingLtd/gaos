@@ -1,4 +1,6 @@
-﻿using Serilog;
+﻿#pragma warning disable 8600, 8601, 8618
+
+using Serilog;
 using MongoDB.Driver;
 using MongoDB.Bson;
 using Newtonsoft.Json;
