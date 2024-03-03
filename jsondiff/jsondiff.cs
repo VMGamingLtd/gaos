@@ -1,4 +1,6 @@
-﻿using System;
+﻿#pragma warning disable 8600, 8601, 8618
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
