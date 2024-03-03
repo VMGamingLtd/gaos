@@ -1,4 +1,4 @@
-﻿#pragma warning disable 8600, 8602, 8604
+﻿#pragma warning disable 8600, 8602, 8604, 8605
 
 using Microsoft.EntityFrameworkCore;
 using System.Text;

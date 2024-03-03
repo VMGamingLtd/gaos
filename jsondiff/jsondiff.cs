@@ -1,4 +1,4 @@
-﻿#pragma warning disable 8600, 8601, 8618, 8602, 8604, 8603
+﻿#pragma warning disable 8600, 8601, 8618, 8602, 8604, 8603, 8765
 
 using System;
 using System.Collections.Generic;

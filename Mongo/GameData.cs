@@ -1,4 +1,4 @@
-﻿#pragma warning disable 8600, 8601, 8618
+﻿#pragma warning disable 8600, 8601, 8618, 8604
 
 using Serilog;
 using MongoDB.Driver;
