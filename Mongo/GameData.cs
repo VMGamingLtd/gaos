@@ -198,8 +198,8 @@ namespace Gaos.Mongo
                     {
                         Log.Information($"diff base: {gameDataJsonDiffBase}");
                         JObject gameDataJsonDiffBaseJObject = JObject.Parse(gameDataJsonDiffBase);
-                        Log.Information($"doc: {doc.ToJson()}");
-                        JObject gameDataJsontMongoJObject  = JObject.Parse(doc.ToJson());
+                        Log.Information($"doc: {doc["GameData"].ToJson()}");
+                        JObject gameDataJsontMongoJObject  = JObject.Parse(doc["GameData"].ToJson());
                         var isBasesEqual = jsondiff.Difference.IsEqualValues(gameDataJsonDiffBaseJObject, gameDataJsontMongoJObject);
                         if (!isBasesEqual.IsEqual) {
                             Log.Error($"{CLASS_NAME}:{METHOD_NAME} game data diff base mismatch");
