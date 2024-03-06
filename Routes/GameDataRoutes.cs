@@ -165,8 +165,17 @@ namespace Gaos.Routes
 
 
                     try
+                    {
+                        string gameDataDiffBase;
+                        if (request.GameDataDiffBase != null)
                         {
-                        var result = await gameDataService.SaveGameDataAsync(userService.GetUserId(), request.SlotId, request.GameDataJson, request.Version, isGameDataDiff);
+                            gameDataDiffBase = request.GameDataDiffBase;
+                        }
+                        else
+                        {
+                            gameDataDiffBase = "";
+                        }
+                        var result = await gameDataService.SaveGameDataAsync(userService.GetUserId(), request.SlotId, request.GameDataJson, request.Version, isGameDataDiff, gameDataDiffBase);
                         if (result.IsError)
                         {
                             response = new UserGameDataSaveResponse

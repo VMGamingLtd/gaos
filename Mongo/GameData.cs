@@ -134,7 +134,7 @@ namespace Gaos.Mongo
 
         // Save the game data to the database at the specified slot for the specified user.
 
-        public async Task<SaveGameDataAsyncResult> SaveGameDataAsync(int userId, int slotId, string gameDataJson, string version, bool isGameDataDiff)
+        public async Task<SaveGameDataAsyncResult> SaveGameDataAsync(int userId, int slotId, string gameDataJson, string version, bool isGameDataDiff, string gameDataJsonDiffBase = "")
         {
             const string METHOD_NAME = "SaveGameDataAsync";
             IMongoCollection<BsonDocument> collection = await MongoService.GetCollectionForGameData();
@@ -194,6 +194,27 @@ namespace Gaos.Mongo
                 }
                 else
                 {
+                    if (isGameDataDiff && gameDataJsonDiffBase != "")
+                    {
+                        JObject gameDataJsonDiffBaseJObject = JObject.Parse(gameDataJsonDiffBase);
+                        JObject gameDataJsontMongoJObject  = JObject.Parse(doc.ToJson());
+                        var isBasesEqual = jsondiff.Difference.IsEqualValues(gameDataJsonDiffBaseJObject, gameDataJsontMongoJObject);
+                        if (!isBasesEqual.IsEqual) {
+                            Log.Error($"{CLASS_NAME}:{METHOD_NAME} game data diff base mismatch");
+                            Log.Information($"{gameDataJsonDiffBase}");
+                            Log.Information($"{gameDataJsontMongoJObject}");
+                            return new SaveGameDataAsyncResult
+                            {
+                                IsError = true,
+                                ErrorMessage = "game data diff base mismatch"
+                            };
+                        }
+                        else
+                        {
+                            Log.Information($"{CLASS_NAME}:{METHOD_NAME} game data diff base match");
+                        }
+                    }
+
                     // document exists, update the document if the version matches
 
                     string docVersion;
