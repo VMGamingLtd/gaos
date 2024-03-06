@@ -108,6 +108,7 @@ namespace Gaos.Mongo
 
         private BsonDocument AddGameDataDiff(BsonDocument gameDataBson, string gameDataDiffJson)
         {
+            const string METHOD_NAME = "AddGameDataDiff";
             try
             {
                 var serializerSettings = jsondiff.Difference.GetJsonSerializerSettings();
@@ -124,7 +125,9 @@ namespace Gaos.Mongo
 
             catch (Exception ex)
             {
-                Log.Error(ex, $"{CLASS_NAME}:AddGameDataDiff {ex}");
+                Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME} {ex}");
+                Log.Information($"{CLASS_NAME}:{METHOD_NAME} gameDataBson: {gameDataBson.ToJson()}");
+                Log.Information($"{CLASS_NAME}:{METHOD_NAME} gameDataDiffJson: {gameDataDiffJson}"); 
                 throw new Exception("failed to add game data diff");
             }
         }
