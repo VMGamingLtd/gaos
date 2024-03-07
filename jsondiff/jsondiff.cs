@@ -732,7 +732,8 @@ namespace jsondiff
                 }
                 else if (diff.Diff.Type == DiffType.Remove)
                 {
-                    arr.RemoveAt(diff.Index);
+                    // arr.RemoveAt(diff.Index);
+                    ;
                 }
                 else if (diff.Diff.Type == DiffType.Replace)
                 {
@@ -751,7 +752,29 @@ namespace jsondiff
                     throw new Exception("MergeArrays: invalid diff type");
                 }
             }
-            return arr;
+
+            // handle removes
+            List<int> removeIndexes = new List<int>();
+            foreach (var diff in diffs)
+            {
+                if (diff.Diff.Type == DiffType.Remove)
+                {
+                    removeIndexes.Add(diff.Index);
+                }
+            };
+
+            // create new empty array
+            var newArr = new JArray();
+            // clone array, skipping removed indexes
+            for (int i = 0; i < arr.Count; i++)
+            {
+                if (!removeIndexes.Contains(i))
+                {
+                    newArr.Add(arr[i]);
+                }
+            }
+
+            return newArr;
         }
 
 
