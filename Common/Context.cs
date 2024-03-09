@@ -13,8 +13,8 @@
         public static int TOKEN_EXPIRATION_HOURS = 100 * 365 * 24; // 100 years
 
         // debugging
-        public static bool IS_DEBUG = true;
-        public static bool IS_DEBUG_SEND_GAMEDATA_ON_SAVE = true;
+        public static bool IS_DEBUG = false;
+        public static bool IS_DEBUG_SEND_GAMEDATA_ON_SAVE = false;
 
     }
 }
