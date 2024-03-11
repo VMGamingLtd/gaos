@@ -20,6 +20,7 @@ namespace Gaos.Middleware
 
         public async Task Invoke(HttpContext context)
         {
+            const string METHOD_NAME = "Invoke()";
             string path = context.Request.Path.Value;
 
             if (path == null || !path.StartsWith("/ws"))
@@ -36,7 +37,10 @@ namespace Gaos.Middleware
             }
             else
             {
+                Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: error: This is not a websocket request");
+
                 context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                await context.Response.WriteAsync("This is not a websocket request");
             }
         }
 
