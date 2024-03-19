@@ -47,7 +47,16 @@ namespace Gaos.WebSocket
                 }
                 else if (result.MessageType == System.Net.WebSockets.WebSocketMessageType.Binary)
                 {
-                    Log.Error($"{CLASS_NAME}:{METHOD_NAME}: error: message in binary format received, ignoring the message ...");
+                    if (result.EndOfMessage)
+                    {
+                        await RoutesBinaryMessage(socket, buffer, result.Count);
+                    }
+                    else
+                    {
+                        Log.Error($"{CLASS_NAME}:{METHOD_NAME}: error: binary message is too long, ignoring the message ...");
+                        await IgnoreMessage(socket);
+                    }
+
                     continue;
                 }
                 else if (result.MessageType == System.Net.WebSockets.WebSocketMessageType.Text)
@@ -91,7 +100,18 @@ namespace Gaos.WebSocket
                 }
                 else if (result.MessageType == System.Net.WebSockets.WebSocketMessageType.Binary)
                 {
-                    continue;
+                    if (result.EndOfMessage)
+                    {
+                        break;
+                        
+                    }
+                    else
+                    {
+                        // close the socket
+                        await socket.CloseAsync(System.Net.WebSockets.WebSocketCloseStatus.InvalidMessageType, "binary message is too long", CancellationToken.None);
+                        Remove(socket);
+                        break;
+                    }
                 }
                 else if (result.MessageType == System.Net.WebSockets.WebSocketMessageType.Text)
                 {
@@ -102,7 +122,10 @@ namespace Gaos.WebSocket
                     }
                     else
                     {
-                        continue;
+                        // close the socket
+                        await socket.CloseAsync(System.Net.WebSockets.WebSocketCloseStatus.InvalidMessageType, "binary message is too long", CancellationToken.None);
+                        Remove(socket);
+                        break;
                     }
 
                 }
@@ -140,10 +163,21 @@ namespace Gaos.WebSocket
             catch (Exception e)
             {
                 Log.Error($"{CLASS_NAME}:{METHOD_NAME}: error: {e.Message}, message cannot be deserialized, message is ignored ......");
-                return;
             }
-            return;
        
+        }
+
+        public static async Task RoutesBinaryMessage(System.Net.WebSockets.WebSocket socket, byte[] message, int messageLngth)
+        {
+            const string METHOD_NAME = "RoutesBinaryMessage()";
+            try
+            {
+                Log.Information($"{CLASS_NAME}:{METHOD_NAME}: received binary message");
+            }
+            catch (Exception e)
+            {
+                Log.Error($"{CLASS_NAME}:{METHOD_NAME}: error: {e.Message}");
+            }
         }
     }
 }
