@@ -62,6 +62,52 @@ namespace Gaos.Routes
                 }
             });
 
+            group.MapPost("/deleteGameSlot", async (EnsureNewSlotRequest request, Db db, Gaos.Common.UserService userService, Gaos.Mongo.GameData gameDataService) =>
+            {
+                const string METHOD_NAME = "deleteGameSlot()";
+                try 
+                {
+                    DeleteSlotResponse response;
+                    int userId = request.UserId;
+                    int slotId = request.SlotId;
+
+                    if (userId != userService.GetUserId())
+                    {
+                        response = new DeleteSlotResponse
+                        {
+                            IsError = true,
+                            ErrorMessage = "request.UserId does not match user id of authorized user"
+                        };
+                        Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: request.UserId does not match user id of authorized user");
+                        return Results.Json(response);
+                    
+                    }
+
+                    // Delete slot
+                    await gameDataService.DeleteGameSlot(userId, slotId);
+
+                    response = new DeleteSlotResponse
+                    {
+                        IsError = false,
+                        ErrorMessage = "",
+
+                    };
+
+                    return Results.Json(response);
+
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
+                    DeleteSlotResponse response = new DeleteSlotResponse
+                    {
+                        IsError = true,
+                        ErrorMessage = "internal error",
+                    };
+                    return Results.Json(response);
+                }
+            });
+
             group.MapPost("/userGameDataGet", async (UserGameDataGetRequest request, Db db, Gaos.Common.UserService userService, Gaos.Mongo.GameData gameDataService) => 
             {
                 const string METHOD_NAME = "userGameDataGet()";

@@ -105,6 +105,17 @@ namespace Gaos.Mongo
             }
         }
 
+        public async Task DeleteGameSlot(int userId, int slotId)
+        {
+            IMongoCollection<BsonDocument> collection = await MongoService.GetCollectionForGameData();
+            var filter = Builders<BsonDocument>.Filter
+                .And(
+                    Builders<BsonDocument>.Filter.Eq("UserId", userId),
+                    Builders<BsonDocument>.Filter.Eq("SlotId", slotId)
+                 );
+            await collection.DeleteOneAsync(filter);
+        }
+
 
         private BsonDocument AddGameDataDiff(BsonDocument gameDataBson, string gameDataDiffJson)
         {
