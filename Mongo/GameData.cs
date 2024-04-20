@@ -1,4 +1,6 @@
-﻿using Serilog;
+﻿#pragma warning disable 8600, 8601, 8618, 8604
+
+using Serilog;
 using MongoDB.Driver;
 using MongoDB.Bson;
 using Newtonsoft.Json;
@@ -24,6 +26,8 @@ namespace Gaos.Mongo
 
         public bool IsError { get; set; }
         public string ErrorMessage { get; set; }
+
+        public string GameDataJson { get; set; }
     }
 
 
@@ -101,9 +105,21 @@ namespace Gaos.Mongo
             }
         }
 
+        public async Task DeleteGameSlot(int userId, int slotId)
+        {
+            IMongoCollection<BsonDocument> collection = await MongoService.GetCollectionForGameData();
+            var filter = Builders<BsonDocument>.Filter
+                .And(
+                    Builders<BsonDocument>.Filter.Eq("UserId", userId),
+                    Builders<BsonDocument>.Filter.Eq("SlotId", slotId)
+                 );
+            await collection.DeleteOneAsync(filter);
+        }
+
 
         private BsonDocument AddGameDataDiff(BsonDocument gameDataBson, string gameDataDiffJson)
         {
+            const string METHOD_NAME = "AddGameDataDiff";
             try
             {
                 var serializerSettings = jsondiff.Difference.GetJsonSerializerSettings();
@@ -120,14 +136,16 @@ namespace Gaos.Mongo
 
             catch (Exception ex)
             {
-                Log.Error(ex, $"{CLASS_NAME}:AddGameDataDiff {ex}");
+                Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME} {ex}");
+                Log.Information($"{CLASS_NAME}:{METHOD_NAME} gameDataBson: {gameDataBson.ToJson()}");
+                Log.Information($"{CLASS_NAME}:{METHOD_NAME} gameDataDiffJson: {gameDataDiffJson}"); 
                 throw new Exception("failed to add game data diff");
             }
         }
 
         // Save the game data to the database at the specified slot for the specified user.
 
-        public async Task<SaveGameDataAsyncResult> SaveGameDataAsync(int userId, int slotId, string gameDataJson, string version, bool isGameDataDiff)
+        public async Task<SaveGameDataAsyncResult> SaveGameDataAsync(int userId, int slotId, string gameDataJson, string version, bool isGameDataDiff, string gameDataJsonDiffBase = "")
         {
             const string METHOD_NAME = "SaveGameDataAsync";
             IMongoCollection<BsonDocument> collection = await MongoService.GetCollectionForGameData();
@@ -165,14 +183,51 @@ namespace Gaos.Mongo
 
                     await collection.UpdateOneAsync(filter, update, options);
 
-                    return new SaveGameDataAsyncResult
+                    if (Common.Context.IS_DEBUG && Common.Context.IS_DEBUG_SEND_GAMEDATA_ON_SAVE)
                     {
-                        IsError = false,
-                        Version = _version.ToString()
-                    };
+                        doc = await collection.Find(filter).FirstOrDefaultAsync();
+                        return new SaveGameDataAsyncResult
+                        {
+                            IsError = false,
+                            Version = _version.ToString(),
+                            GameDataJson = doc["GameData"].ToJson() 
+                        };
+                    }
+                    else
+                    {
+
+                        return new SaveGameDataAsyncResult
+                        {
+                            IsError = false,
+                            Version = _version.ToString()
+                        };
+                    }
                 }
                 else
                 {
+                    if (isGameDataDiff && gameDataJsonDiffBase != "")
+                    {
+                        Log.Information($"diff base: {gameDataJsonDiffBase}");
+                        JObject gameDataJsonDiffBaseJObject = JObject.Parse(gameDataJsonDiffBase);
+                        Log.Information($"doc: {doc["GameData"].ToJson()}");
+                        JObject gameDataJsontMongoJObject  = JObject.Parse(doc["GameData"].ToJson());
+                        var isBasesEqual = jsondiff.Difference.IsEqualValues(gameDataJsonDiffBaseJObject, gameDataJsontMongoJObject);
+                        if (!isBasesEqual.IsEqual) {
+                            Log.Error($"{CLASS_NAME}:{METHOD_NAME} game data diff base mismatch");
+                            Log.Information($"{gameDataJsonDiffBase}");
+                            Log.Information($"{gameDataJsontMongoJObject}");
+                            return new SaveGameDataAsyncResult
+                            {
+                                IsError = true,
+                                ErrorMessage = "game data diff base mismatch"
+                            };
+                        }
+                        else
+                        {
+                            Log.Information($"{CLASS_NAME}:{METHOD_NAME} game data diff base match");
+                        }
+                    }
+
                     // document exists, update the document if the version matches
 
                     string docVersion;
@@ -222,12 +277,26 @@ namespace Gaos.Mongo
 
                     await collection.UpdateOneAsync(filter, update);
 
-                    return new SaveGameDataAsyncResult
+                    if (Common.Context.IS_DEBUG && Common.Context.IS_DEBUG_SEND_GAMEDATA_ON_SAVE)
                     {
-                        IsError = false,
-                        Id = docId,
-                        Version = _version.ToString()
-                    };
+                        doc = await collection.Find(filter).FirstOrDefaultAsync();
+                        return new SaveGameDataAsyncResult
+                        {
+                            IsError = false,
+                            Id = docId,
+                            Version = _version.ToString(),
+                            GameDataJson = doc["GameData"].ToJson()
+                        };
+                    }
+                    else
+                    {
+                        return new SaveGameDataAsyncResult
+                        {
+                            IsError = false,
+                            Id = docId,
+                            Version = _version.ToString()
+                        };
+                    }
 
                 }
 

@@ -101,7 +101,6 @@ namespace Gaos.Dbo
             modelBuilder.Entity<ChatRoomMessage>().HasOne(e => e.ChatRoom).WithMany().HasForeignKey(e => e.ChatRoomId);
             modelBuilder.Entity<ChatRoomMessage>().HasIndex(e => new { e.ChatRoomId, e.MessageId }).IsUnique(true);
 
-            Log.Information($"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 5000: SeedAll()");
             Gaos.Seed.SeedAll.Seed(modelBuilder, Configuration, Environment);
         }
     }

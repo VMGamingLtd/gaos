@@ -9,6 +9,14 @@ using System.Diagnostics;
 using System.Net.WebSockets;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.DataProtection;
+using System;
+
+if (false) {
+    gaos.Tests.Test.TestAll();
+    Console.WriteLine("Press any key to exit program");
+    Console.ReadKey();
+    Environment.Exit(0);
+}
 
 
 
