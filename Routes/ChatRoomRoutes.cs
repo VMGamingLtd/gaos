@@ -514,19 +514,19 @@ namespace Gaos.Routes
                 try
                 {
                     // Remove all messages from the chat room using raw SQL
-                    await db.Database.ExecuteSqlRawAsync($"DELETE FROM ChatRoomMessage WHERE ChatRoomId = {deleteChatRoomRequest.ChatRoomId}");
+                    await db.Database.ExecuteSqlAsync($"DELETE FROM ChatRoomMessage WHERE ChatRoomId = {deleteChatRoomRequest.ChatRoomId}");
                     using (var transaction = db.Database.BeginTransaction())
                     {
                         try
                         {
                             // Remove all messages from the chat room using raw SQL
-                            await db.Database.ExecuteSqlRawAsync($"DELETE FROM ChatRoomMessage WHERE ChatRoomId = {deleteChatRoomRequest.ChatRoomId}");
+                            int v = await db.Database.ExecuteSqlAsync($"DELETE FROM ChatRoomMessage WHERE ChatRoomId = {deleteChatRoomRequest.ChatRoomId}");
 
                             // Remove all members from the chat room using raw SQL
-                            await db.Database.ExecuteSqlRawAsync($"DELETE FROM ChatRoomMember WHERE ChatRoomId = {deleteChatRoomRequest.ChatRoomId}");
+                            await db.Database.ExecuteSqlAsync($"DELETE FROM ChatRoomMember WHERE ChatRoomId = {deleteChatRoomRequest.ChatRoomId}");
 
                             // Remove chat room using raw SQL
-                            await db.Database.ExecuteSqlRawAsync($"DELETE FROM ChatRoom WHERE Id = {deleteChatRoomRequest.ChatRoomId}");
+                            await db.Database.ExecuteSqlAsync($"DELETE FROM ChatRoom WHERE Id = {deleteChatRoomRequest.ChatRoomId}");
 
                             transaction.Commit();
                         }
