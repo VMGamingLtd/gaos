@@ -132,7 +132,7 @@ limit  @maxCount
         {
             group.MapGet("/hello", (Db db) => "hello");
 
-            _ = group.MapPost("/getUsersList", async (GetUsersListRequest getUsersListRequest, Db db, MySqlConnection dbConn, Gaos.Common.UserService userService) =>
+            group.MapPost("/getUsersList", async (GetUsersListRequest getUsersListRequest, Db db, MySqlConnection dbConn, Gaos.Common.UserService userService) =>
             {
                 const string METHOD_NAME = "friends/getUsersList";
                 try
@@ -193,6 +193,78 @@ limit  @maxCount
                         Users = responseUsers,
                     };
 
+
+                    // Return response
+                    return Results.Json(response);
+
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
+                    GetUsersListResponse response = new GetUsersListResponse
+                    {
+                        IsError = true,
+                        ErrorMessage = "internal error",
+                    };
+                    return Results.Json(response);
+                }
+
+            });
+
+            group.MapPost("friends/addFriend", async (AddFriendRequest addFriendRequest, Db db, Gaos.Common.UserService userService) =>
+            {
+                const string METHOD_NAME = "friends/addFriend";
+                try
+                {
+                    // If logged in user is not chatroom owner, then create a chatroom for him
+
+                    int userId = userService.GetUserId();
+                    bool chatRoomExists = await db.ChatRoom
+                        .AnyAsync(x => x.OwnerId == userId);
+                    // create chatroom for logged in user if not exists
+                    if (!chatRoomExists)
+                    {
+                        var chatRoom = new ChatRoom
+                        {
+                            Name = userService.GetUser().Name + "'s chatroom",
+                            OwnerId = userId,
+                        };
+                        db.ChatRoom.Add(chatRoom);
+                        await db.SaveChangesAsync();
+                        Log.Information($"{CLASS_NAME}:{METHOD_NAME}: created chatroom for user: {userId}");
+                    }
+
+                    // Read chat room id
+                    int chatRoomId = await db.ChatRoom
+                        .Where(x => x.OwnerId == userId)
+                        .Select(x => x.Id)
+                        .FirstAsync();
+
+                    // Add friend user to chat room - entity ChatRoomMember
+                    ChatRoomMember chatRoomMember = new ChatRoomMember
+                    {
+                        ChatRoomId = chatRoomId,
+                        UserId = addFriendRequest.UserId,
+                    };
+                    // check if user is already in chat room
+                    bool userAlreadyInChatRoom = await db.ChatRoomMember
+                        .AnyAsync(x => x.ChatRoomId == chatRoomId && x.UserId == addFriendRequest.UserId);
+                    if (!userAlreadyInChatRoom)
+                    {
+                        db.ChatRoomMember.Add(chatRoomMember);
+                        await db.SaveChangesAsync();
+                    }
+                    else
+                    {
+                        Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: friend user: {addFriendRequest.UserId} is already in chatroom: {chatRoomId}");
+                    }
+                    
+                    // Create response
+                    AddFriendResponse response = new AddFriendResponse
+                    {
+                        IsError = false,
+                        ErrorMessage = null,
+                    };
 
                     // Return response
                     return Results.Json(response);

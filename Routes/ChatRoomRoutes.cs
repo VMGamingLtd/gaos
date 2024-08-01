@@ -585,18 +585,30 @@ namespace Gaos.Routes
                     // Get all members of the chat room
                     int[] chatRoomMembers = await db.ChatRoomMember.Where(x => x.ChatRoomId == addMemberRequest.ChatRoomId).Select(x => x.UserId).ToArrayAsync();
 
-                    bool userIsMember = chatRoomMembers.Contains(userService.GetUserId());
-                    bool userIsOwner = chatRoom.OwnerId == userService.GetUserId();
+                    bool loogedInUserIsMember = chatRoomMembers.Contains(userService.GetUserId());
+                    bool loggedInUserIsOwner = chatRoom.OwnerId == userService.GetUserId();
 
-                    if (!userIsMember && !userIsOwner)
+                    if (!loggedInUserIsOwner)
                     {
                         response = new AddMemberResponse
                         {
                             IsError = true,
-                            ErrorMessage = "user is not a member of the chat room",
+                            ErrorMessage = "logged in user is not an owner of chatroom, only the owner may add new members ",
                         };
                         return Results.Json(response);
                     }
+
+                    bool userIsAlreadyMember = chatRoomMembers.Contains(addMemberRequest.UserId);
+                    if (userIsAlreadyMember)
+                    {
+                        Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: user is already a member of the chat room");
+                        response = new AddMemberResponse
+                        {
+                            IsError = false,
+                        };
+                        return Results.Json(response);
+                    }
+                    
 
                     // Add member to chat room
                     ChatRoomMember chatRoomMember = new ChatRoomMember
