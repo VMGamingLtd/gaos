@@ -3,17 +3,24 @@
 using Serilog;
 using Gaos.Dbo;
 using Gaos.Routes.Model.ApiJson;
+using Microsoft.EntityFrameworkCore;
+using MySqlConnector;
+using System.Runtime.CompilerServices;
 
 namespace Gaos.Routes
 {
 
     public static class ApiRoutes
     {
-
         public static string CLASS_NAME = typeof(ApiRoutes).Name;
+
+
         public static RouteGroupBuilder GroupApi(this RouteGroupBuilder group)
         {
-            group.MapGet("/hello", (Db db) => "hello");
+            group.MapGet("/hello", (Db db) =>
+            {
+                return "hello";
+            });
 
             group.MapGet("/tokenClaims", (HttpContext context, Db db) => 
             {

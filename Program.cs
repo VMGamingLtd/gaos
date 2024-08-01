@@ -10,6 +10,7 @@ using System.Net.WebSockets;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.DataProtection;
 using System;
+using MySqlConnector;
 
 if (false) {
     gaos.Tests.Test.TestAll();
@@ -58,6 +59,8 @@ builder.Services.AddDbContext<Db>(opt =>
     .EnableSensitiveDataLogging()
     .EnableDetailedErrors()
 );
+
+builder.Services.AddMySqlDataSource(builder.Configuration["db_connection_string"]);
 
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
@@ -148,7 +151,7 @@ var app = builder.Build();
 app.UseMiddleware<CookieMiddleware>();
 app.UseWebSockets();
 app.UseMiddleware<WebSocketMiddleware>();
-app.UseMiddleware<AuthMiddleware>();
+app.UseMiddleware<AuthMiddleware>(); 
 
 
 app.Map("/", (IConfiguration configuration) => {
