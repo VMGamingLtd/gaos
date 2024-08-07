@@ -2,9 +2,11 @@
 
 using System.Diagnostics;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 namespace Gaos.Common
 {
+
     public class UserService
     {
         private static string CLASS_NAME = typeof(UserService).Name;
@@ -13,6 +15,7 @@ namespace Gaos.Common
         private  Gaos.Dbo.Db Db = null;
 
         private Gaos.Dbo.Model.User? User = null;
+        private GetGroupResult getGroupResult = null;
 
         public UserService(HttpContext context, Auth.TokenService tokenService, Gaos.Dbo.Db db)
         {
@@ -101,5 +104,108 @@ namespace Gaos.Common
             }
 
         }
+
+        private class GetUserGroup_query1_result
+        {
+            public bool IsGroupOwner { get; set; }
+            public int GroupId { get; set; }
+            public string GroupOwnerName { get; set; }
+        }
+
+        private class GetUserGroup_query2_result
+        {
+            public bool IsGroupMember { get; set; }
+            public int GroupId { get; set; }
+            public int GroupOwnerId { get; set; }
+            public string GroupOwnerName { get; set; }
+        }
+
+        public class GetGroupResult
+        {
+            public bool IsGroupOwner { get; set; }
+            public bool IsGroupMember { get; set; }
+            public int GroupId { get; set; }
+            public int GroupOwnerId { get; set; }
+            public string GroupOwnerName { get; set; }
+        }
+
+
+        // Returns either group of which user is owner or group of which user is member or null if user is neither owner nor member of any group
+
+        public async Task<GetGroupResult?> GetUserGroup()
+        {
+            const string METHOD_NAME = "GetGroup()";
+
+            if (this.getGroupResult != null)
+            {
+                return this.getGroupResult;
+            }
+
+            if (this.User == null)
+            {
+                Log.Error($"{CLASS_NAME}:{METHOD_NAME} user not logged in");
+                throw new Exception("user not logged int");
+            }
+
+                // search for Group entry where user is owner
+                var query_1 = from g in Db.Groupp
+                            join u in Db.User on g.OwnerId equals u.Id
+                            where g.OwnerId == this.User.Id
+                            select new GetUserGroup_query1_result
+                            {
+                                IsGroupOwner = (g != null),
+                                GroupId = (g != null) ? g.Id : -1,
+                                GroupOwnerName = (u != null) ? u.Name : "",
+                            };
+                var queryResult_1 = await query_1.FirstOrDefaultAsync();
+
+                if (queryResult_1 != null)
+                {
+                    return new GetGroupResult
+                    {
+                        IsGroupOwner = queryResult_1.IsGroupOwner,
+                        IsGroupMember = false,
+                        GroupId = queryResult_1.GroupId,
+                        GroupOwnerId = this.User.Id,
+                        GroupOwnerName = queryResult_1.GroupOwnerName,
+                    };
+                }
+                else
+                {
+                    // search for GroupMember entry where user is member
+                    var query_2 = from gm in Db.GroupMember
+                                join g in Db.Groupp on gm.GroupId equals g.Id
+                                join u in Db.User on g.OwnerId equals u.Id
+                                where gm.UserId == this.User.Id
+                                select new GetUserGroup_query2_result
+                                {
+                                    IsGroupMember = (gm != null),
+                                    GroupId = (g != null) ? g.Id : -1,
+                                    GroupOwnerId = (g != null) ? (int)g.OwnerId : -1,
+                                    GroupOwnerName = (u != null) ? u.Name : "",
+                                };
+                    var queryResult_2 = await query_2.FirstOrDefaultAsync();
+
+                    if (queryResult_2 != null)
+                    {
+                        return new GetGroupResult
+                        {
+                            IsGroupOwner = false,
+                            IsGroupMember = queryResult_2.IsGroupMember,
+                            GroupId = queryResult_2.GroupId,
+                            GroupOwnerId = queryResult_2.GroupOwnerId,
+                            GroupOwnerName = queryResult_2.GroupOwnerName,
+                        };
+                    }
+                    else
+                    {
+                        // user is neither owner nor member of any group
+                        return null;
+                    }
+
+                }
+        }
+
+        
     }
 }

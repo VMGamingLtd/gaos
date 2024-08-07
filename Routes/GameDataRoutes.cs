@@ -224,10 +224,25 @@ namespace Gaos.Routes
                         var result = await gameDataService.SaveGameDataAsync(userService.GetUserId(), request.SlotId, request.GameDataJson, request.Version, isGameDataDiff, gameDataDiffBase);
                         if (result.IsError)
                         {
+                            UserGameDataSaveErrorKind errorKind;
+                            switch(result.ErrorKind)
+                            {
+                                case Gaos.Mongo.SaveGameDataAsyncResultErrorKind.JsonDiffBaseMismatchError:
+                                    errorKind = UserGameDataSaveErrorKind.JsonDiffBaseMismatchError;
+                                    break;
+                                case Gaos.Mongo.SaveGameDataAsyncResultErrorKind.VersionMismatchError:
+                                    errorKind = UserGameDataSaveErrorKind.VersionMismatchError;
+                                    break;
+                                default:
+                                    errorKind = UserGameDataSaveErrorKind.InternalError;
+                                    break;
+                            }
+
                             response = new UserGameDataSaveResponse
                             {
                                 IsError = true,
                                 ErrorMessage = result.ErrorMessage,
+                                ErrorKind = errorKind,
                             };
                             return Results.Json(response);
                         }
