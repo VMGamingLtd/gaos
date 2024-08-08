@@ -9,7 +9,7 @@
     }
 
     [System.Serializable]
-    public class GetGroupMembersResponse
+    public class GetMyFriendsResponse
     {
         public bool? IsError { get; set; }
         public string? ErrorMessage { get; set; }

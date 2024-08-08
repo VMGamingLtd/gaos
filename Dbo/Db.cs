@@ -33,6 +33,7 @@ namespace Gaos.Dbo
         public DbSet<ChatRoomMessage> ChatRoomMessage => Set<ChatRoomMessage>();
         public DbSet<Groupp> Groupp => Set<Groupp>();
         public DbSet<GroupMember> GroupMember => Set<GroupMember>();
+        public DbSet<GroupMemberRequest> GroupMemberRequest => Set<GroupMemberRequest>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -120,6 +121,13 @@ namespace Gaos.Dbo
             modelBuilder.Entity<GroupMember>().HasOne(e => e.Group).WithMany().HasForeignKey(e => e.GroupId);
             modelBuilder.Entity<GroupMember>().HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
             modelBuilder.Entity<GroupMember>().HasIndex(e => new { e.GroupId, e.UserId }).IsUnique(true);
+
+            // GroupMemberRequest
+            modelBuilder.Entity<GroupMemberRequest>().HasKey(e => e.Id);
+            modelBuilder.Entity<GroupMemberRequest>().HasOne(e => e.Group).WithMany().HasForeignKey(e => e.GroupId);
+            modelBuilder.Entity<GroupMemberRequest>().HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
+            modelBuilder.Entity<GroupMemberRequest>().HasIndex(e => new { e.GroupId, e.UserId }).IsUnique(true);
+
 
             Gaos.Seed.SeedAll.Seed(modelBuilder, Configuration, Environment);
         }
