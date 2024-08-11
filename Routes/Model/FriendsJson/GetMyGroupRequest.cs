@@ -1,7 +1,7 @@
 ﻿namespace Gaos.Routes.Model.FriendsJson
 {
     [System.Serializable]
-    public class GetMyGroupReuest
+    public class GetMyGroupRequest
     {
     }
 }

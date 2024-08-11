@@ -147,7 +147,8 @@ namespace Gaos.Common
                     return this.getGroupResult;
                 }
 
-                if (this.User == null)
+                var user = GetUser();
+                if (user == null)
                 {
                     Log.Error($"{CLASS_NAME}:{METHOD_NAME} user not logged in");
                     throw new Exception("user not logged int");
@@ -156,7 +157,7 @@ namespace Gaos.Common
                 // search for Group entry where user is owner
                 var query_1 = from g in Db.Groupp
                             join u in Db.User on g.OwnerId equals u.Id
-                            where g.OwnerId == this.User.Id
+                            where g.OwnerId == user.Id
                             select new GetUserGroup_query1_result
                             {
                                 IsGroupOwner = (g != null),
@@ -172,7 +173,7 @@ namespace Gaos.Common
                         IsGroupOwner = queryResult_1.IsGroupOwner,
                         IsGroupMember = false,
                         GroupId = queryResult_1.GroupId,
-                        GroupOwnerId = this.User.Id,
+                        GroupOwnerId = user.Id,
                         GroupOwnerName = queryResult_1.GroupOwnerName,
                     };
                     
@@ -196,7 +197,7 @@ namespace Gaos.Common
                     var query_2 = from gm in Db.GroupMember
                                   join g in Db.Groupp on gm.GroupId equals g.Id
                                   join u in Db.User on g.OwnerId equals u.Id
-                                  where gm.UserId == this.User.Id
+                                  where gm.UserId == user.Id
                                   select new GetUserGroup_query2_result
                                   {
                                       IsGroupMember = (gm != null),

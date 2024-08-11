@@ -1,4 +1,5 @@
-﻿namespace Gaos.Dbo.Model
+﻿#pragma warning disable 8632
+namespace Gaos.Dbo.Model
 {
     [System.Serializable]
     public class GroupMemberRequest
@@ -8,6 +9,6 @@
         public Groupp? Group { get; set; }
         public int? UserId { get; set; }
         public User? User { get; set; }
-        public DateTime RequestDate { get; set; }
+        public System.DateTime RequestDate { get; set; }
     }
 }

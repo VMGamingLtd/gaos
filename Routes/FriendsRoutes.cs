@@ -145,30 +145,119 @@ limit  @maxCount
             }
         }
 
+        public record GetRequestsForFriendRequestSearchResult(int GroupId, int GroupOwnerId, string GroupOwnerName); 
+        public static async  Task<List<GetRequestsForFriendRequestSearchResult>> GetRequestsForFriendRequestSearch(MySqlConnection dbConn, int userId, string ownerNamePattern, int maxCount)
+        {
+            const string METHOD_NAME = "GetRequestsForFriendRequestSearch()";
+            string sqlQuery;
+            if (ownerNamePattern != null)
+            {
+                sqlQuery =
+    @$"
+select
+    Group.Id as GroupId,
+    Owner.Id as GroupOwnerId,
+    Owner.Name as GroupOwnerName,
+from
+    GroupMemberRequest
+    join User on GroupMemberRequest.UserId = User.Id
+    join Groupp on GroupMemberRequest.GroupId = Groupp.Id
+    join User as Owner on Groupp.OwnerId = Owner.Id
+where
+    User.Id = @userId and
+    Owner.Name like @ownerNamePattern
+limit  @maxCount
+";
+            }
+            else
+            {
+                sqlQuery =
+    @$"
+select
+    Group.Id as GroupId,
+    Owner.Id as GroupOwnerId,
+    Owner.Name as GroupOwnerName,
+from
+    GroupMemberRequest
+    join User on GroupMemberRequest.UserId = User.Id
+    join Groupp on GroupMemberRequest.GroupId = Groupp.Id
+    join User as Owner on Groupp.OwnerId = Owner.Id
+where
+    User.Id = @userId and
+limit  @maxCount
+";
+            }
+
+            try
+            {
+                await dbConn.OpenAsync();
+                await using var command = dbConn.CreateCommand();
+                command.CommandText = sqlQuery;
+                command.Parameters.AddWithValue("@userId", userId);
+                if (ownerNamePattern != null)
+                {
+                    command.Parameters.AddWithValue("@ownerNamePattern", ownerNamePattern);
+                }
+                using var reader = await command.ExecuteReaderAsync();
+
+                List<GetRequestsForFriendRequestSearchResult> result = new List<GetRequestsForFriendRequestSearchResult>();
+                while (await reader.ReadAsync())
+                {
+                    var _GroupId = reader.GetInt32(0);
+                    var _GroupOwnerId = reader.GetInt32(1);
+                    var _GroupOwnerName = reader.GetString(1);
+                    result.Add(new GetRequestsForFriendRequestSearchResult(_GroupId, _GroupOwnerId, _GroupOwnerName));
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
+                throw new Exception("internal error");
+            }
+        }
+
 
         public static RouteGroupBuilder GroupFriends(this RouteGroupBuilder group)
         {
             group.MapGet("/hello", (Db db) => "hello");
 
-            group.MapPost("/getMyGroup", async (GetMyGroupReuest getMyGroupReuest,  Gaos.Common.UserService userService) =>
+            group.MapPost("/getMyGroup", async (GetMyGroupRequest getMyGroupReuest,  Gaos.Common.UserService userService) =>
             {
                 const string METHOD_NAME = "friends/getMyGroup";
                 try
                 {
                     var myGroup = await userService.GetUserGroup();
-                    GetMyGroupResponse response = new GetMyGroupResponse
+                    if (myGroup != null)
                     {
-                        IsError = false,
-                        ErrorMessage = null,
+                        GetMyGroupResponse response = new GetMyGroupResponse
+                        {
+                            IsError = false,
+                            ErrorMessage = null,
 
-                        IsGroupOwner = myGroup.IsGroupOwner,
-                        IsGroupMember = myGroup.IsGroupMember,
-                        GroupId = myGroup.GroupId,
-                        GroupOwnerId = myGroup.GroupOwnerId,
-                        GroupOwnerName = myGroup.GroupOwnerName,
-                    };
+                            IsGroupOwner = myGroup.IsGroupOwner,
+                            IsGroupMember = myGroup.IsGroupMember,
+                            GroupId = myGroup.GroupId,
+                            GroupOwnerId = myGroup.GroupOwnerId,
+                            GroupOwnerName = myGroup.GroupOwnerName,
+                        };
 
-                    return Results.Json(response);
+                        return Results.Json(response);
+                    }
+                    else
+                    {
+                        GetMyGroupResponse response = new GetMyGroupResponse
+                        {
+                            IsError = false,
+                            ErrorMessage = null,
+
+                            IsGroupOwner = false,
+                            IsGroupMember = false,
+                        };
+
+                        return Results.Json(response);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -191,8 +280,7 @@ limit  @maxCount
 
                     // Read Groupp of logged in user
                     Groupp group = await db.Groupp
-                        .Where(x => x.OwnerId == userId)
-                        .FirstAsync();
+                        .Where(x => x.OwnerId == userId).FirstOrDefaultAsync();
 
                     // If logged in user is not Groupp owner, then create a Groupp for him
                     if (group == null)
@@ -269,6 +357,7 @@ limit  @maxCount
             });
 
 
+
             group.MapPost("/getMyFriends", async (GetMyFriendsRequest getMyFriendsRequest, Db db, MySqlConnection dbConn, Gaos.Common.UserService userService) =>
             {
                 const string METHOD_NAME = "friends/getMyFriends";
@@ -282,7 +371,7 @@ limit  @maxCount
 
                     Groupp group = await db.Groupp
                         .Where(x => x.OwnerId == userId)
-                        .FirstAsync();
+                        .FirstOrDefaultAsync();
                     int groupOwnerId = (group.OwnerId == null)? -1 : (int)group.OwnerId;
 
                     if (group == null)
@@ -367,7 +456,7 @@ limit  @maxCount
                         // Read Groupp of logged in user
                         Groupp group = await db.Groupp
                             .Where(x => x.OwnerId == userId)
-                            .FirstAsync();
+                            .FirstOrDefaultAsync();
 
                         // If logged in user is not Groupp owner, then create a Groupp for him
                         if (group == null)
@@ -393,6 +482,7 @@ limit  @maxCount
                             .AnyAsync(x => x.GroupId == group.Id && x.UserId == friendId);
                         if (friendExists)
                         {
+                            Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: friend is already group member, groupId: {group.Id}, userId: {friendId}");
                             response = new AddFriendResponse
                             {
                                 IsError = false,
@@ -514,7 +604,7 @@ limit  @maxCount
             });
 
 
-            group.MapPost("/getFriendRequests", async (GetFriendRequestsRequest getFriendRequestsRequest, Db db, Gaos.Common.UserService userService) =>
+            group.MapPost("/getFriendRequests", async (GetFriendRequestsRequest getFriendRequestsRequest, Db db, MySqlConnection dbConn, Gaos.Common.UserService userService) =>
             {
                 const string METHOD_NAME = "friends/getFriwendRequests";
                 using (var transaction = db.Database.BeginTransaction())
@@ -523,31 +613,19 @@ limit  @maxCount
                     try
                     {
                         int userId = userService.GetUserId();
+                        string ownerNamePattern = getFriendRequestsRequest.OwnerNamePattern;
                         int maxCount = getFriendRequestsRequest.MaxCount;
 
-                        // Read all GroupMemberRequest for userId up to maxCount
-                        var query = from gmr in db.GroupMemberRequest
-                                    join g in db.Groupp on gmr.GroupId equals g.Id
-                                    join u in db.User on g.OwnerId equals u.Id
-                                    where gmr.UserId == userId
-                                    select new getFriendRequests_GroupMemberRequestQueryResult
-                                    {
-                                        GroupId = g.Id,
-                                        GroupName = g.Name,
-                                        GroupOwnerId = (int)g.OwnerId,
-                                        GroupOwnerName = u.Name,
-                                    };
-                        var queryResult = await query
-                            .Take(maxCount)
-                            .ToArrayAsync();
+
+                        var friendRequestsSerach = await GetRequestsForFriendRequestSearch(dbConn, userId, ownerNamePattern, maxCount);
+
 
                         List<GetFriendRequestsResponseListItem> friendRequests = new List<GetFriendRequestsResponseListItem>();
-                        foreach (var item in queryResult)
+                        foreach (var item in friendRequestsSerach)
                         {
                             friendRequests.Add(new GetFriendRequestsResponseListItem
                             {
                                 GroupId = item.GroupId,
-                                GroupName = item.GroupName,
                                 GroupOwnerId = item.GroupOwnerId,
                                 GroupOwnerName = item.GroupOwnerName,
                             });
@@ -745,7 +823,7 @@ limit  @maxCount
                         // Read Groupp of logged in user
                         Groupp group = await db.Groupp
                             .Where(x => x.OwnerId == userId)
-                            .FirstAsync();
+                            .FirstOrDefaultAsync();
 
                         // If logged in user is not Groupp owner, then create a Groupp for him
                         if (group == null)
