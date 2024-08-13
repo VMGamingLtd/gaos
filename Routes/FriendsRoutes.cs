@@ -155,9 +155,9 @@ limit  @maxCount
                 sqlQuery =
     @$"
 select
-    Group.Id as GroupId,
+    Groupp.Id as GroupId,
     Owner.Id as GroupOwnerId,
-    Owner.Name as GroupOwnerName,
+    Owner.Name as GroupOwnerName
 from
     GroupMemberRequest
     join User on GroupMemberRequest.UserId = User.Id
@@ -174,19 +174,21 @@ limit  @maxCount
                 sqlQuery =
     @$"
 select
-    Group.Id as GroupId,
+    Groupp.Id as GroupId,
     Owner.Id as GroupOwnerId,
-    Owner.Name as GroupOwnerName,
+    Owner.Name as GroupOwnerName
 from
     GroupMemberRequest
     join User on GroupMemberRequest.UserId = User.Id
     join Groupp on GroupMemberRequest.GroupId = Groupp.Id
     join User as Owner on Groupp.OwnerId = Owner.Id
 where
-    User.Id = @userId and
+    User.Id = @userId 
 limit  @maxCount
 ";
             }
+
+            Log.Information($"{CLASS_NAME}:{METHOD_NAME}: sqlQuery: {sqlQuery}"); //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
             try
             {
@@ -194,6 +196,11 @@ limit  @maxCount
                 await using var command = dbConn.CreateCommand();
                 command.CommandText = sqlQuery;
                 command.Parameters.AddWithValue("@userId", userId);
+                if (ownerNamePattern != null)
+                {
+                    command.Parameters.AddWithValue("@ownerNamePattern", ownerNamePattern);
+                }
+                command.Parameters.AddWithValue("@maxCount", maxCount);
                 if (ownerNamePattern != null)
                 {
                     command.Parameters.AddWithValue("@ownerNamePattern", ownerNamePattern);
