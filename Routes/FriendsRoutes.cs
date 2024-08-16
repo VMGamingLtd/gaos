@@ -35,7 +35,7 @@ namespace Gaos.Routes
             public string? GroupOwnerName { get; set; }
         };
 
-        public record GetUsersForFriendsSearchResul(int UserId, string UserName, bool IsFriend); 
+        public record GetUsersForFriendsSearchResul(int UserId, string UserName, bool IsFriend, bool IsFriendRequest); 
 
         public static async  Task<List<GetUsersForFriendsSearchResul>> GetUsersForFriendsSearch(MySqlConnection dbConn, int userId, int maxCount, string userNamePattern)
         {
@@ -47,7 +47,8 @@ namespace Gaos.Routes
 select
     User.Id as UserId,
     User.Name as UserName,
-    Friend.Id as FriendId    
+    Friend.Id as FriendId,    
+    FriendRequest.Id as FriendRequestId
 from
     User
 left join 
@@ -60,6 +61,16 @@ left join
     where
         Groupp.OwnerId = @userId
 ) as Friend on Friend.Id = User.Id 
+left join 
+(
+    select
+        GroupMemberRequest.UserId as Id
+    from
+        Groupp
+    join GroupMemberRequest on Groupp.Id = GroupMemberRequest.GroupId
+    where
+        Groupp.OwnerId = @userId
+) as FriendRequest on FriendRequest.Id = User.Id 
 where
     User.Name like @userNamePattern
 limit  @maxCount
@@ -84,7 +95,11 @@ limit  @maxCount
                     if (!reader.IsDBNull(2))
                         _FriendId = reader.GetInt32(2);
                     bool _IsFriend = _FriendId != null;
-                    result.Add(new GetUsersForFriendsSearchResul(_UserId, _UserName, _IsFriend));
+                    int? _FriendRequestId = null;
+                    if (!reader.IsDBNull(3))
+                        _FriendRequestId = reader.GetInt32(3);
+                    bool _IsFriendRequest = _FriendRequestId != null;
+                    result.Add(new GetUsersForFriendsSearchResul(_UserId, _UserName, _IsFriend, _IsFriendRequest));
                 }
                 reader.Close();
 
@@ -319,6 +334,7 @@ limit  @maxCount
                                 Id = users[i].UserId,
                                 Name = users[i].UserName,
                                 IsFriend = users[i].IsFriend,
+                                IsFriendRequest = users[i].IsFriendRequest,
                             };
                         }
                     }
@@ -481,6 +497,18 @@ limit  @maxCount
                             group = await db.Groupp
                                 .Where(x => x.OwnerId == userId)
                                 .FirstAsync();
+                        }
+
+                        // Check if friend is group owner
+                        if (group.OwnerId == friendId)
+                        {
+                            Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: friend is group owner, groupId: {group.Id}, userId: {friendId}");
+                            response = new AddFriendResponse
+                            {
+                                IsError = false,
+                                ErrorMessage = "friend is group owner",
+                            };
+                            return Results.Json(response);
                         }
 
 
