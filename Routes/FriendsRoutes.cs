@@ -589,6 +589,68 @@ limit  @maxCount
 
             });
 
+            group.MapPost("/revokeFriendRequest", async (RevokeFriendRequestRequest revokeFriendRequestRequest, Db db, Gaos.Common.UserService userService) =>
+            {
+                const string METHOD_NAME = "friends/revokeFriendRequest";
+                using (var transaction = db.Database.BeginTransaction())
+                {
+                    try
+                    {
+                        int userId = userService.GetUserId();
+                        int friendId = revokeFriendRequestRequest.UserId;
+
+                        // Read Groupp of logged in user
+                        Groupp group = await db.Groupp
+                            .Where(x => x.OwnerId == userId)
+                            .FirstOrDefaultAsync();
+
+                        // If logged in user is not Groupp owner, then create a Groupp for him
+                        if (group == null)
+                        {
+                            var _group = new Groupp
+                            {
+                                Name = userService.GetUser().Name + "'s Groupp",
+                                OwnerId = userId,
+                            };
+                            db.Groupp.Add(_group);
+                            await db.SaveChangesAsync();
+                            Log.Information($"{CLASS_NAME}:{METHOD_NAME}: created Groupp for user: {userId}");
+
+                            // Read Groupp of logged in user
+                            group = await db.Groupp
+                                .Where(x => x.OwnerId == userId)
+                                .FirstAsync();
+                        }
+
+                        // Remove all lines from GroupMemberRequest table where userId and friendId and groupId is group.Id
+                        db.GroupMemberRequest.RemoveRange(db.GroupMemberRequest
+                            .Where(x => x.GroupId == group.Id && x.UserId == friendId));
+                        db.SaveChanges();
+
+                        transaction.Commit();
+
+                        RevokeFriendRequestResponse response = new RevokeFriendRequestResponse
+                        {
+                            IsError = false,
+                            ErrorMessage = null,
+                        };
+                        return Results.Json(response);
+                    }
+                    catch (Exception ex)
+                    {
+                        transaction.Rollback();
+                        Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
+                        RevokeFriendRequestResponse response = new RevokeFriendRequestResponse
+                        {
+                            IsError = true,
+                            ErrorMessage = "internal error",
+                        };
+                        return Results.Json(response);
+                    }
+                }
+            });
+
+
             group.MapPost("/addFriendRequestExists", async (AddFriendRequestExistsRequest addFriendRequestExistsRequest, Db db, Gaos.Common.UserService userService) =>
             {
                 const string METHOD_NAME = "friends/addFriendRequestExists";
