@@ -227,7 +227,7 @@ limit  @maxCount
                 {
                     var _GroupId = reader.GetInt32(0);
                     var _GroupOwnerId = reader.GetInt32(1);
-                    var _GroupOwnerName = reader.GetString(1);
+                    var _GroupOwnerName = reader.GetString(2);
                     result.Add(new GetRequestsForFriendRequestSearchResult(_GroupId, _GroupOwnerId, _GroupOwnerName));
                 }
 
@@ -651,56 +651,6 @@ limit  @maxCount
             });
 
 
-            group.MapPost("/addFriendRequestExists", async (AddFriendRequestExistsRequest addFriendRequestExistsRequest, Db db, Gaos.Common.UserService userService) =>
-            {
-                const string METHOD_NAME = "friends/addFriendRequestExists";
-                using (var transaction = db.Database.BeginTransaction())
-                {
-                    AddFriendRequestExistsResponse response;
-                    try
-                    {
-                        int userId = userService.GetUserId();
-                        // Check if there is a record in GroupMemberRequest for userId
-                        bool groupMemberRequestExists = await db.GroupMemberRequest
-                            .AnyAsync(x => x.UserId == userId);
-                        if (groupMemberRequestExists)
-                        {
-                            response = new AddFriendRequestExistsResponse
-                            {
-                                IsError = false,
-                                ErrorMessage = null,
-                                Exists = true,
-                            };
-                            transaction.Commit();
-                            return Results.Json(response);
-                        }
-                        else
-                        {
-                            response = new AddFriendRequestExistsResponse
-                            {
-                                IsError = false,
-                                ErrorMessage = null,
-                                Exists = false,
-                            };
-                            transaction.Commit();
-                            return Results.Json(response);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        transaction.Rollback();
-                        Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
-                        response = new AddFriendRequestExistsResponse
-                        {
-                            IsError = true,
-                            ErrorMessage = "internal error",
-                        };
-                        return Results.Json(response);
-                    }
-                }
-            });
-
-
             group.MapPost("/getFriendRequests", async (GetFriendRequestsRequest getFriendRequestsRequest, Db db, MySqlConnection dbConn, Gaos.Common.UserService userService) =>
             {
                 const string METHOD_NAME = "friends/getFriwendRequests";
@@ -752,14 +702,14 @@ limit  @maxCount
                 }
             });
 
-            group.MapPost("/acceptFriend", async (AcceptFriendRequest acceptFriendRequest, Db db, Gaos.Common.UserService userService) =>
+            group.MapPost("/acceptFriendRequest", async (AcceptFriendRequestRequest acceptFriendRequest, Db db, Gaos.Common.UserService userService) =>
             {
-                const string METHOD_NAME = "friends/acceptFriend";
+                const string METHOD_NAME = "friends/acceptFriendRequest";
                 using (var transaction = db.Database.BeginTransaction())
                 {
                     try
                     {
-                        AcceptFriendResponse response;
+                        AcceptFriendRequestResponse response;
 
                         int groupId = acceptFriendRequest.GroupId;
                         int userId = userService.GetUserId();
@@ -772,7 +722,7 @@ limit  @maxCount
                         {
                             transaction.Rollback();
                             Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: no such group member request: {groupId}, {userId}");
-                            response = new AcceptFriendResponse
+                            response = new AcceptFriendRequestResponse
                             {
                                 IsError = false,
                                 ErrorMessage = null,
@@ -788,7 +738,7 @@ limit  @maxCount
                         {
                             transaction.Rollback();
                             Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: user is already meember of this group, groupId: {groupId}, userId: {userId}");
-                            response = new AcceptFriendResponse
+                            response = new AcceptFriendRequestResponse
                             {
                                 IsError = false,
                                 ErrorMessage = null,
@@ -804,7 +754,7 @@ limit  @maxCount
                         {
                             transaction.Rollback();
                             Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: user is already member of other group, groupId: {groupMemberOther.GroupId}, userId {userId}");
-                            response = new AcceptFriendResponse
+                            response = new AcceptFriendRequestResponse
                             {
                                 IsError = true,
                                 ErrorMessage = "lready member of other group",
@@ -826,7 +776,7 @@ limit  @maxCount
                         await db.SaveChangesAsync();
                         transaction.Commit();
 
-                        response = new AcceptFriendResponse
+                        response = new AcceptFriendRequestResponse
                         {
                             IsError = false,
                             ErrorMessage = null,
@@ -838,7 +788,7 @@ limit  @maxCount
                     {
                         transaction.Rollback();
                         Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
-                        AcceptFriendResponse response = new AcceptFriendResponse
+                        AcceptFriendRequestResponse response = new AcceptFriendRequestResponse
                         {
                             IsError = true,
                             ErrorMessage = "internal error",
@@ -848,14 +798,14 @@ limit  @maxCount
                 }
             });
 
-            group.MapPost("/rejectFriend", async (RejectFriendRequest rejectFriendRequest, Db db, Gaos.Common.UserService userService) =>
+            group.MapPost("/rejectFriendRequest", async (RejectFriendRequestRequest rejectFriendRequest, Db db, Gaos.Common.UserService userService) =>
             {
-                const string METHOD_NAME = "friends/rejectFriend";
+                const string METHOD_NAME = "friends/rejectFriendRequest";
                 using (var transaction = db.Database.BeginTransaction())
                 {
                     try
                     {
-                        RejectFriendResponse response;
+                        RejectFriendRequestResponse response;
 
                         int groupId = rejectFriendRequest.GroupId;
                         int userId = userService.GetUserId();
@@ -869,7 +819,7 @@ limit  @maxCount
                         {
                             transaction.Rollback();
                             Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: no such group member request: {groupId}, {userId}");
-                            response = new RejectFriendResponse
+                            response = new RejectFriendRequestResponse
                             {
                                 IsError = false,
                                 ErrorMessage = null,
@@ -882,7 +832,7 @@ limit  @maxCount
                         await db.SaveChangesAsync();
                         transaction.Commit();
 
-                        response = new RejectFriendResponse
+                        response = new RejectFriendRequestResponse
                         {
                             IsError = false,
                             ErrorMessage = null,
@@ -894,7 +844,7 @@ limit  @maxCount
                     {
                         transaction.Rollback();
                         Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
-                        RejectFriendResponse response = new RejectFriendResponse
+                        RejectFriendRequestResponse response = new RejectFriendRequestResponse
                         {
                             IsError = true,
                             ErrorMessage = "internal error",
