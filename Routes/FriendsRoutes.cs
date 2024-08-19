@@ -390,54 +390,58 @@ limit  @maxCount
                     GetMyFriendsResponse response;
 
                     int maxCount = getMyFriendsRequest.MaxCount;
-                    int userId = userService.GetUserId();   
+                    int userId = userService.GetUserId();
 
+                    bool userIsGroupOwner = false;
+                    bool userIsGroupMember = false;
+
+                    // Read Groupp of logged in user
                     Groupp group = await db.Groupp
                         .Where(x => x.OwnerId == userId)
                         .FirstOrDefaultAsync();
-                    int groupOwnerId = (group.OwnerId == null)? -1 : (int)group.OwnerId;
-
-                    if (group == null)
+                    if ((group != null) && (group.Id == getMyFriendsRequest.GroupId))
                     {
-                        Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: user has no group, userId: {userId}");
-
-                        // no such group, return empty list
-                        response = new GetMyFriendsResponse
-                        {
-                            IsError = false,
-                            ErrorMessage = null,
-                            Users = System.Array.Empty<GroupMembersListUser>()
-                        };
-                        return Results.Json(response);
+                        userIsGroupOwner = true;
+                    }
+                    else
+                    {
+                        userIsGroupMember = await db.GroupMember
+                            .AnyAsync(x => x.GroupId == getMyFriendsRequest.GroupId && x.UserId == userId);
                     }
 
-                    int groupId = group.Id;
+                    int groupId = getMyFriendsRequest.GroupId;
+                    GroupMembersListUser[] members;
 
-                    // Read group members up to maxCount
-                    var query = from groupMember in db.GroupMember
-                                join user in db.User on groupMember.UserId equals user.Id
-                                where groupMember.GroupId == groupId
-                                select new getMyFriends_GroupMemberQqueryResult
-                                {
-                                    UserId = user.Id,
-                                    UserName = user.Name,
-                                };
-                    getMyFriends_GroupMemberQqueryResult[] groupMembers = await query
-                        .Take(maxCount)
-                        .ToArrayAsync();
-
-
-                    GroupMembersListUser[] members = new GroupMembersListUser[groupMembers.Length];
-                    // add other members to the list
-                    for (int i = 0; i < groupMembers.Length; i++)
+                    if (userIsGroupOwner || userIsGroupMember)
                     {
-                        if (groupMembers[i].UserId == groupOwnerId)
-                            continue;
-                        members[i] = new GroupMembersListUser
+                        // Read group members up to maxCount
+                        var query = from groupMember in db.GroupMember
+                                    join user in db.User on groupMember.UserId equals user.Id
+                                    where groupMember.GroupId == groupId
+                                    select new getMyFriends_GroupMemberQqueryResult
+                                    {
+                                        UserId = user.Id,
+                                        UserName = user.Name,
+                                    };
+                        getMyFriends_GroupMemberQqueryResult[] groupMembers = await query
+                            .Take(maxCount)
+                            .ToArrayAsync();
+
+
+                        members = new GroupMembersListUser[groupMembers.Length];
+                        // add other members to the list
+                        for (int i = 0; i < groupMembers.Length; i++)
                         {
-                            Id = groupMembers[i].UserId,
-                            Name = groupMembers[i].UserName,
-                        };
+                            members[i] = new GroupMembersListUser
+                            {
+                                UserId = groupMembers[i].UserId,
+                                UserName = groupMembers[i].UserName,
+                            };
+                        }
+                    }
+                    else
+                    {
+                        members = Array.Empty<GroupMembersListUser>();
                     }
 
                     // send response
@@ -856,16 +860,16 @@ limit  @maxCount
 
 
 
-            group.MapPost("/removeFriend", async (RemoveFriendRequest removeFriendRequest, Db db, Gaos.Common.UserService userService) => {
-                const string METHOD_NAME = "friends/removeFriend";
+            group.MapPost("/removeFromGroup", async (RemoveFromGroupRequest removeFromGroupRequest, Db db, Gaos.Common.UserService userService) => {
+                const string METHOD_NAME = "friends/removeFromGroup";
                 using (var transaction = db.Database.BeginTransaction())
                 {
                     try
                     {
-                        RemoveFriendResponse response;
+                        RemoveFromGroupResponse response;
 
                         int userId = userService.GetUserId();
-                        int friendId = removeFriendRequest.UserId;
+                        int friendId = removeFromGroupRequest.UserId;
 
                         // Read Groupp of logged in user
                         Groupp group = await db.Groupp
@@ -898,7 +902,7 @@ limit  @maxCount
                         await db.SaveChangesAsync();
                         transaction.Commit();
 
-                        response = new RemoveFriendResponse
+                        response = new RemoveFromGroupResponse
                         {
                             IsError = false,
                             ErrorMessage = null,
@@ -910,7 +914,7 @@ limit  @maxCount
                     {
                         transaction.Rollback();
                         Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
-                        RemoveFriendResponse response = new RemoveFriendResponse
+                        RemoveFromGroupResponse response = new RemoveFromGroupResponse
                         {
                             IsError = true,
                             ErrorMessage = "internal error",
@@ -921,12 +925,12 @@ limit  @maxCount
 
             });
 
-            group.MapPost("/removeMyselFromGreoup", async (RemoveMeFromGroupRequest removeMeFromGroupRequest, Db db, Gaos.Common.UserService userService) =>
+            group.MapPost("/leaveGreoup", async (LeaveGroupRequest leaveGroupRequest, Db db, Gaos.Common.UserService userService) =>
             {
-                const string METHOD_NAME = "friends/removeFriend";
+                const string METHOD_NAME = "friends/leaveGroup";
                 using (var transaction = db.Database.BeginTransaction())
                 {
-                    RemoveMeFromGroupResponse response;
+                    LeaveGroupResponse response;
                     try
                     {
                         int userId = userService.GetUserId();
@@ -936,7 +940,7 @@ limit  @maxCount
                         await db.SaveChangesAsync();
                         transaction.Commit();
 
-                        response = new RemoveMeFromGroupResponse
+                        response = new LeaveGroupResponse
                         {
                             IsError = false,
                             ErrorMessage = null,
@@ -947,7 +951,7 @@ limit  @maxCount
                     {
                         transaction.Rollback();
                         Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
-                        response = new RemoveMeFromGroupResponse
+                        response = new LeaveGroupResponse
                         {
                             IsError = true,
                             ErrorMessage = "internal error",

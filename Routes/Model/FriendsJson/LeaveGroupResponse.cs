@@ -2,7 +2,7 @@
 namespace Gaos.Routes.Model.FriendsJson
 {
     [System.Serializable]
-    public class RemoveMeFromGroupResponse
+    public class LeaveGroupResponse
     {
         public bool? IsError { get; set; }
         public string? ErrorMessage { get; set; }

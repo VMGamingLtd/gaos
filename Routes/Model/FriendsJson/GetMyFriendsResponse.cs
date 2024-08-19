@@ -4,9 +4,8 @@ namespace Gaos.Routes.Model.FriendsJson
     [System.Serializable]
     public class GroupMembersListUser
     {
-        public int Id { get; set; }
-        public string? Name { get; set; }
-        public bool? IsOwner { get; set; }
+        public int UserId { get; set; }
+        public string? UserName { get; set; }
     }
 
     [System.Serializable]
