@@ -35,9 +35,9 @@ namespace Gaos.Routes
             public string? GroupOwnerName { get; set; }
         };
 
-        public record GetUsersForFriendsSearchResul(int UserId, string UserName, bool IsFriend, bool IsFriendRequest); 
+        public record GetUsersForFriendsSearchResult(int UserId, string UserName, bool IsFriend, bool IsFriendRequest); 
 
-        public static async  Task<List<GetUsersForFriendsSearchResul>> GetUsersForFriendsSearch(MySqlConnection dbConn, int userId, int maxCount, string userNamePattern)
+        public static async  Task<List<GetUsersForFriendsSearchResult>> GetUsersForFriendsSearch(MySqlConnection dbConn, int userId, int maxCount, string userNamePattern)
         {
             const string METHOD_NAME = "GetUsersForFriendsSearch()";
             // Select users and if selected user is already a friend of logged in user (identified by method parameter userId) then  FriendId will be not null and equal to the selected user id. 
@@ -77,15 +77,24 @@ limit  @maxCount
 ";
             try
             {
+                string likePattern;
+                if (userNamePattern == null)
+                {
+                    likePattern = "%";
+                }
+                else
+                {
+                    likePattern = $"%{userNamePattern}%";
+                }
                 await dbConn.OpenAsync();
                 await using var command = dbConn.CreateCommand();
                 command.CommandText = sqlQuery;
                 command.Parameters.AddWithValue("@userId", userId);
-                command.Parameters.AddWithValue("@userNamePattern", $"%{userNamePattern}%");
+                command.Parameters.AddWithValue("@userNamePattern", $"%{likePattern}%");
                 command.Parameters.AddWithValue("@maxCount", maxCount);
                 using var reader = await command.ExecuteReaderAsync();
 
-                List<GetUsersForFriendsSearchResul> result = new List<GetUsersForFriendsSearchResul>();
+                List<GetUsersForFriendsSearchResult> result = new List<GetUsersForFriendsSearchResult>();
 
                 while (await reader.ReadAsync())
                 {
@@ -99,7 +108,7 @@ limit  @maxCount
                     if (!reader.IsDBNull(3))
                         _FriendRequestId = reader.GetInt32(3);
                     bool _IsFriendRequest = _FriendRequestId != null;
-                    result.Add(new GetUsersForFriendsSearchResul(_UserId, _UserName, _IsFriend, _IsFriendRequest));
+                    result.Add(new GetUsersForFriendsSearchResult(_UserId, _UserName, _IsFriend, _IsFriendRequest));
                 }
                 reader.Close();
 
@@ -115,6 +124,7 @@ limit  @maxCount
 
         }
 
+        /*
         public record GetUserFriendsResult(int UserId, string UserName);
         public static async Task<List<GetUserFriendsResult>> GetUserFriends(MySqlConnection dbConn, int userId, int maxCount)
         {
@@ -159,6 +169,7 @@ limit  @maxCount
                 throw new Exception("internal error");
             }
         }
+        */
 
         public record GetRequestsForFriendRequestSearchResult(int GroupId, int GroupOwnerId, string GroupOwnerName); 
         public static async  Task<List<GetRequestsForFriendRequestSearchResult>> GetRequestsForFriendRequestSearch(MySqlConnection dbConn, int userId, string ownerNamePattern, int maxCount)
@@ -323,34 +334,17 @@ limit  @maxCount
                     }
 
                     UsersListUser[] responseUsers;
-                    if (getUsersListRequest.FilterUserName != null && getUsersListRequest.FilterUserName.Length > 0)
+                    var users = await GetUsersForFriendsSearch(dbConn, userId, getUsersListRequest.MaxCount, getUsersListRequest.FilterUserName);
+                    responseUsers = new UsersListUser[users.Count];
+                    for (int i = 0; i < users.Count; i++)
                     {
-                        var users = await GetUsersForFriendsSearch(dbConn, userId, getUsersListRequest.MaxCount, getUsersListRequest.FilterUserName);
-                        responseUsers = new UsersListUser[users.Count];
-                        for (int i = 0; i < users.Count; i++)
+                        responseUsers[i] = new UsersListUser
                         {
-                            responseUsers[i] = new UsersListUser
-                            {
-                                Id = users[i].UserId,
-                                Name = users[i].UserName,
-                                IsFriend = users[i].IsFriend,
-                                IsFriendRequest = users[i].IsFriendRequest,
-                            };
-                        }
-                    }
-                    else
-                    {
-                        var users = await GetUserFriends(dbConn, userId, getUsersListRequest.MaxCount);
-                        responseUsers = new UsersListUser[users.Count];
-                        for (int i = 0; i < users.Count; i++)
-                        {
-                            responseUsers[i] = new UsersListUser
-                            {
-                                Id = users[i].UserId,
-                                Name = users[i].UserName,
-                                IsFriend = true,
-                            };
-                        }
+                            Id = users[i].UserId,
+                            Name = users[i].UserName,
+                            IsFriend = users[i].IsFriend,
+                            IsFriendRequest = users[i].IsFriendRequest,
+                        };
                     }
 
                     // Create response
@@ -925,7 +919,7 @@ limit  @maxCount
 
             });
 
-            group.MapPost("/leaveGreoup", async (LeaveGroupRequest leaveGroupRequest, Db db, Gaos.Common.UserService userService) =>
+            group.MapPost("/leaveGroup", async (LeaveGroupRequest leaveGroupRequest, Db db, Gaos.Common.UserService userService) =>
             {
                 const string METHOD_NAME = "friends/leaveGroup";
                 using (var transaction = db.Database.BeginTransaction())
