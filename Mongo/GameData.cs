@@ -19,6 +19,13 @@ namespace Gaos.Mongo
         public string ErrorMessage { get; set; }
     }
 
+    public enum SaveGameDataAsyncResultErrorKind
+    {
+        JsonDiffBaseMismatchError,
+        VersionMismatchError,
+        InternalError,
+    }
+
     public class SaveGameDataAsyncResult
     {
         public string Id { get; set; }
@@ -26,6 +33,7 @@ namespace Gaos.Mongo
 
         public bool IsError { get; set; }
         public string ErrorMessage { get; set; }
+        public SaveGameDataAsyncResultErrorKind? ErrorKind { get; set; }
 
         public string GameDataJson { get; set; }
     }
@@ -219,7 +227,8 @@ namespace Gaos.Mongo
                             return new SaveGameDataAsyncResult
                             {
                                 IsError = true,
-                                ErrorMessage = "game data diff base mismatch"
+                                ErrorMessage = "game data diff base mismatch",
+                                ErrorKind = SaveGameDataAsyncResultErrorKind.JsonDiffBaseMismatchError
                             };
                         }
                         else
@@ -238,7 +247,8 @@ namespace Gaos.Mongo
                         return new SaveGameDataAsyncResult
                         {
                             IsError = true,
-                            ErrorMessage = "version mismatch (version does not exist)"
+                            ErrorMessage = "version mismatch (version does not exist)",
+                            ErrorKind = SaveGameDataAsyncResultErrorKind.VersionMismatchError
                         };
                     } else {
                         docVersion = doc["_version"].ToString();
@@ -251,7 +261,8 @@ namespace Gaos.Mongo
                         return new SaveGameDataAsyncResult
                         {
                             IsError = true,
-                            ErrorMessage = "version mismatch"
+                            ErrorMessage = "version mismatch",
+                            ErrorKind = SaveGameDataAsyncResultErrorKind.VersionMismatchError
                         };
                     }
 

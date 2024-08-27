@@ -19,6 +19,7 @@ namespace Gaos.Dbo
 
         public DbSet<User> User => Set<User>();
         public DbSet<UserEmail> UserEmail => Set<UserEmail>();
+        public DbSet<UserFriend> UserFriend => Set<UserFriend>();
         public DbSet<UserVerificationCode> UserVerificationCode => Set<UserVerificationCode>();
         public DbSet<Role> Role => Set<Role>();
         public DbSet<UserRole> UserRole => Set<UserRole>();
@@ -30,6 +31,9 @@ namespace Gaos.Dbo
         public DbSet<ChatRoom> ChatRoom => Set<ChatRoom>();
         public DbSet<ChatRoomMember> ChatRoomMember => Set<ChatRoomMember>();
         public DbSet<ChatRoomMessage> ChatRoomMessage => Set<ChatRoomMessage>();
+        public DbSet<Groupp> Groupp => Set<Groupp>();
+        public DbSet<GroupMember> GroupMember => Set<GroupMember>();
+        public DbSet<GroupMemberRequest> GroupMemberRequest => Set<GroupMemberRequest>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -46,6 +50,12 @@ namespace Gaos.Dbo
             modelBuilder.Entity<UserEmail>().HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
             modelBuilder.Entity<UserEmail>().HasIndex(e => e.EmailVerificationCode).IsUnique(true);
             modelBuilder.Entity<UserEmail>().HasIndex(e => e.Email).IsUnique(true);
+
+            // UserFriend
+            modelBuilder.Entity<UserFriend>().HasKey(e => e.Id);
+            modelBuilder.Entity<UserFriend>().HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
+            modelBuilder.Entity<UserFriend>().HasOne(e => e.FriendUser).WithMany().HasForeignKey(e => e.FriendUserId);
+            modelBuilder.Entity<UserFriend>().HasIndex(e => new { e.UserId, e.FriendUserId }).IsUnique(true);
 
             // UserVerificationCode
             modelBuilder.Entity<UserVerificationCode>().HasKey(e => e.Id);
@@ -100,6 +110,24 @@ namespace Gaos.Dbo
             modelBuilder.Entity<ChatRoomMessage>().HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
             modelBuilder.Entity<ChatRoomMessage>().HasOne(e => e.ChatRoom).WithMany().HasForeignKey(e => e.ChatRoomId);
             modelBuilder.Entity<ChatRoomMessage>().HasIndex(e => new { e.ChatRoomId, e.MessageId }).IsUnique(true);
+
+            // Group
+            modelBuilder.Entity<Groupp>().HasKey(e => e.Id);
+            modelBuilder.Entity<Groupp>().HasOne(e => e.Owner).WithMany().HasForeignKey(e => e.OwnerId);
+            modelBuilder.Entity<Groupp>().HasIndex(e => e.OwnerId).IsUnique();
+
+            // GroupMember
+            modelBuilder.Entity<GroupMember>().HasKey(e => e.Id);
+            modelBuilder.Entity<GroupMember>().HasOne(e => e.Group).WithMany().HasForeignKey(e => e.GroupId);
+            modelBuilder.Entity<GroupMember>().HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
+            modelBuilder.Entity<GroupMember>().HasIndex(e => new { e.GroupId, e.UserId }).IsUnique(true);
+
+            // GroupMemberRequest
+            modelBuilder.Entity<GroupMemberRequest>().HasKey(e => e.Id);
+            modelBuilder.Entity<GroupMemberRequest>().HasOne(e => e.Group).WithMany().HasForeignKey(e => e.GroupId);
+            modelBuilder.Entity<GroupMemberRequest>().HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
+            modelBuilder.Entity<GroupMemberRequest>().HasIndex(e => new { e.GroupId, e.UserId }).IsUnique(true);
+
 
             Gaos.Seed.SeedAll.Seed(modelBuilder, Configuration, Environment);
         }
