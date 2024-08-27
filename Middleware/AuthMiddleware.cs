@@ -1,7 +1,7 @@
 ﻿#pragma warning disable 8600, 8602 
 
-using Serilog;
 using Gaos.Auth;
+using Serilog;
 
 namespace Gaos.Middleware
 {
@@ -37,9 +37,12 @@ namespace Gaos.Middleware
 
             string path = context.Request.Path.Value;
 
-             
 
-            if (path != null && path.StartsWith("/api"))
+            if (path != null && path.StartsWith("/api1"))
+            {
+                await _next(context);
+            }
+            else if (path != null && path.StartsWith("/api"))
             {
 
                 string? authHeader = context.Request.Headers["Authorization"];
