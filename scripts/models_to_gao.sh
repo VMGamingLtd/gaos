@@ -75,9 +75,6 @@ function copy_jsondiff()
 # copy models to gao
 copy_models_to ../../gao/Assets/Scripts/Gaos
 
-# copy models to gaoa
-copy_models_to ../../gaoa/gaoa
-
 copy_jsondiff
 
 

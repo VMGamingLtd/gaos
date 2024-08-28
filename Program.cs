@@ -6,6 +6,8 @@ using Gaos.Routes;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using System;
+using MySqlConnector;
 
 if (false)
 {
@@ -55,6 +57,8 @@ builder.Services.AddDbContext<Db>(opt =>
     .EnableSensitiveDataLogging()
     .EnableDetailedErrors()
 );
+
+builder.Services.AddMySqlDataSource(builder.Configuration["db_connection_string"]);
 
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
@@ -148,7 +152,7 @@ var app = builder.Build();
 app.UseMiddleware<CookieMiddleware>();
 app.UseWebSockets();
 app.UseMiddleware<WebSocketMiddleware>();
-app.UseMiddleware<AuthMiddleware>();
+app.UseMiddleware<AuthMiddleware>(); 
 
 
 app.Map("/", (IConfiguration configuration) =>
