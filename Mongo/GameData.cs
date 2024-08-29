@@ -1,10 +1,10 @@
 ﻿#pragma warning disable 8600, 8601, 8618, 8604
 
-using Serilog;
-using MongoDB.Driver;
 using MongoDB.Bson;
+using MongoDB.Driver;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Serilog;
 
 namespace Gaos.Mongo
 {
@@ -60,7 +60,7 @@ namespace Gaos.Mongo
             public string Version { get; set; }
         }
 
-        public async Task<EnsureNewSlotResult> EnsureNewGameSlot(int userId, int slotId, string userName)
+        public async Task<EnsureNewSlotResult> EnsureNewGameSlot(int userId, int slotId, string userName, string country)
         {
             var _version = "0";
 
@@ -76,6 +76,7 @@ namespace Gaos.Mongo
             {
                 { "UserId", userId },
                 { "SlotId", slotId },
+                { "Country", country },
                 { "IsNewSlot", true },
                 { "_version", _version},
                 { "GameData", gameData }
@@ -146,7 +147,7 @@ namespace Gaos.Mongo
             {
                 Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME} {ex}");
                 Log.Information($"{CLASS_NAME}:{METHOD_NAME} gameDataBson: {gameDataBson.ToJson()}");
-                Log.Information($"{CLASS_NAME}:{METHOD_NAME} gameDataDiffJson: {gameDataDiffJson}"); 
+                Log.Information($"{CLASS_NAME}:{METHOD_NAME} gameDataDiffJson: {gameDataDiffJson}");
                 throw new Exception("failed to add game data diff");
             }
         }
@@ -198,7 +199,7 @@ namespace Gaos.Mongo
                         {
                             IsError = false,
                             Version = _version.ToString(),
-                            GameDataJson = doc["GameData"].ToJson() 
+                            GameDataJson = doc["GameData"].ToJson()
                         };
                     }
                     else
@@ -218,9 +219,10 @@ namespace Gaos.Mongo
                         Log.Information($"diff base: {gameDataJsonDiffBase}");
                         JObject gameDataJsonDiffBaseJObject = JObject.Parse(gameDataJsonDiffBase);
                         Log.Information($"doc: {doc["GameData"].ToJson()}");
-                        JObject gameDataJsontMongoJObject  = JObject.Parse(doc["GameData"].ToJson());
+                        JObject gameDataJsontMongoJObject = JObject.Parse(doc["GameData"].ToJson());
                         var isBasesEqual = jsondiff.Difference.IsEqualValues(gameDataJsonDiffBaseJObject, gameDataJsontMongoJObject);
-                        if (!isBasesEqual.IsEqual) {
+                        if (!isBasesEqual.IsEqual)
+                        {
                             Log.Error($"{CLASS_NAME}:{METHOD_NAME} game data diff base mismatch");
                             Log.Information($"{gameDataJsonDiffBase}");
                             Log.Information($"{gameDataJsontMongoJObject}");
@@ -250,7 +252,9 @@ namespace Gaos.Mongo
                             ErrorMessage = "version mismatch (version does not exist)",
                             ErrorKind = SaveGameDataAsyncResultErrorKind.VersionMismatchError
                         };
-                    } else {
+                    }
+                    else
+                    {
                         docVersion = doc["_version"].ToString();
                         docId = doc["_id"].ToString();
                     }
