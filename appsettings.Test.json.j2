@@ -6,14 +6,14 @@
     }
   },
 
-  "db_connection_string": "server=localhost;user=gaos;password=Rychly6528KonikNaLuke;database=gaos;AllowUserVariables=True;UseAffectedRows=False",
+  "db_connection_string": "server=localhost;user=gaos;password={{ GAOS_TEST_DATABASE_PASSWORD | gao_decrypt }};database=gaos;AllowUserVariables=True;UseAffectedRows=False",
   "db_major_version": 10,
   "db_minor_version": 6,
 
   "guest_names_file_path": "/opt/gaos/py/guest_names.txt",
 
   "pkcs12_key_store_file_path": "/opt/gaos/scripts/certs/key_store.pfx",
-  "key_store_password": "changeit",
+  "key_store_password": "{{ GAOS_TEST_KEY_STORE_PASSWORD | gao_decrypt }}",
 
   "mongodb_connection_string": "mongodb://127.0.0.1:27017",
   "mongodb_database_name": "gaos",
@@ -23,7 +23,7 @@
   "email_smtp_server":  "smtp.m1.websupport.sk",
   "email_smtp_server_port":  "587",
   "email_smtp_user": "info@galacticodyssey.space",
-  "email_smtp_password":  "wc2HzEy4WuogmEpOORZF!",
+  "email_smtp_password":  "{{ GAOS_TEST_EMAIL_SMTP_PASSWORD | gao_decrypt }}",
 
   "email_info_user_full_name":  "Galactic Odyssey - Info",
   "email_info_user_email":  "info@galacticodyssey.space",
