@@ -1,16 +1,15 @@
 ﻿#pragma warning disable 8600, 8602, 8604
 
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Text;
-using System.Text.Json;
-using Serilog;
 using Gaos.Auth;
 using Gaos.Dbo;
-using Gaos.Routes.Model.UserJson;
 using Gaos.Dbo.Model;
 using Gaos.Email;
+using Gaos.Routes.Model.UserJson;
 using Gaos.UserVerificationCode;
+using Microsoft.EntityFrameworkCore;
+using Serilog;
+using System.Text;
+using System.Text.Json;
 
 namespace Gaos.Routes
 {
@@ -662,7 +661,7 @@ namespace Gaos.Routes
 
                             user = await db.User.FirstOrDefaultAsync(u => u.Id == userEmail.UserId);
                             if (user == null)
-                            { 
+                            {
                                 response = new RecoverPasswordSendVerificationCodeResponse
                                 {
                                     IsError = true,
@@ -844,6 +843,19 @@ namespace Gaos.Routes
                         ErrorKind = RecoverPasswordChangePassworErrorKind.InternalError,
                     };
                     return Results.Json(response);
+                }
+            });
+
+            group.MapPost("/updateCountry", async (UpdateCountryRequest updateRequest, Gaos.Common.UserService userService) =>
+            {
+                try
+                {
+                    await userService.UpdateCountry(updateRequest.UserId, updateRequest.Country);
+                    return Results.Ok(new { success = true, message = "Country updated successfully" });
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(new { success = false, message = ex.Message });
                 }
             });
 

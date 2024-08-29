@@ -18,6 +18,7 @@ namespace Gaos.Routes.Model.UserJson
         public LoginResponseErrorKind? ErrorKind { get; set; }
 
         public string? UserName { get; set; }
+        public string? Country { get; set; }
         public int UserId { get; set; }
         public bool? IsGuest { get; set; }
         public string? Jwt { get; set; }

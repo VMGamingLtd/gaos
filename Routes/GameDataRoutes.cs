@@ -1,7 +1,6 @@
 ﻿#pragma warning disable 8600, 8602, 8604, 8714
-using Gaos.Dbo.Model;
-using Gaos.Routes.Model.GameDataJson;
 using Gaos.Dbo;
+using Gaos.Routes.Model.GameDataJson;
 using Serilog;
 
 namespace Gaos.Routes
@@ -16,7 +15,7 @@ namespace Gaos.Routes
             group.MapPost("/ensureNewSlot", async (EnsureNewSlotRequest request, Db db, Gaos.Common.UserService userService, Gaos.Mongo.GameData gameDataService) =>
             {
                 const string METHOD_NAME = "ensureNewSlot()";
-                try 
+                try
                 {
                     EnsureNewSlotResponse response;
                     int userId = request.UserId;
@@ -31,11 +30,11 @@ namespace Gaos.Routes
                         };
                         Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: request.UserId does not match user id of authorized user");
                         return Results.Json(response);
-                    
+
                     }
 
                     // Ensure new slot
-                    var resulult = await gameDataService.EnsureNewGameSlot(userId, slotId, userService.GetUser().Name);
+                    var resulult = await gameDataService.EnsureNewGameSlot(userId, slotId, userService.GetUser().Name, userService.GetCountry());
 
                     response = new EnsureNewSlotResponse
                     {
@@ -65,7 +64,7 @@ namespace Gaos.Routes
             group.MapPost("/deleteGameSlot", async (EnsureNewSlotRequest request, Db db, Gaos.Common.UserService userService, Gaos.Mongo.GameData gameDataService) =>
             {
                 const string METHOD_NAME = "deleteGameSlot()";
-                try 
+                try
                 {
                     DeleteSlotResponse response;
                     int userId = request.UserId;
@@ -80,7 +79,7 @@ namespace Gaos.Routes
                         };
                         Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: request.UserId does not match user id of authorized user");
                         return Results.Json(response);
-                    
+
                     }
 
                     // Delete slot
@@ -108,10 +107,10 @@ namespace Gaos.Routes
                 }
             });
 
-            group.MapPost("/userGameDataGet", async (UserGameDataGetRequest request, Db db, Gaos.Common.UserService userService, Gaos.Mongo.GameData gameDataService) => 
+            group.MapPost("/userGameDataGet", async (UserGameDataGetRequest request, Db db, Gaos.Common.UserService userService, Gaos.Mongo.GameData gameDataService) =>
             {
                 const string METHOD_NAME = "userGameDataGet()";
-                try 
+                try
                 {
                     UserGameDataGetResponse response;
                     int userId = request.UserId;
@@ -127,7 +126,7 @@ namespace Gaos.Routes
                         };
                         Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: request.UserId does not match user id of authorized user");
                         return Results.Json(response);
-                    
+
                     }
 
                     var result = await gameDataService.GetGameDataAsync(userId, slotId, version);
@@ -168,10 +167,10 @@ namespace Gaos.Routes
 
             });
 
-            group.MapPost("/userGameDataSave", async (UserGameDataSaveRequest request, Db db, Gaos.Common.UserService userService, Gaos.Mongo.GameData gameDataService) => 
+            group.MapPost("/userGameDataSave", async (UserGameDataSaveRequest request, Db db, Gaos.Common.UserService userService, Gaos.Mongo.GameData gameDataService) =>
             {
                 const string METHOD_NAME = "userGameDataSave()";
-                try 
+                try
                 {
                     UserGameDataSaveResponse response;
 
@@ -225,7 +224,7 @@ namespace Gaos.Routes
                         if (result.IsError)
                         {
                             UserGameDataSaveErrorKind errorKind;
-                            switch(result.ErrorKind)
+                            switch (result.ErrorKind)
                             {
                                 case Gaos.Mongo.SaveGameDataAsyncResultErrorKind.JsonDiffBaseMismatchError:
                                     errorKind = UserGameDataSaveErrorKind.JsonDiffBaseMismatchError;
@@ -264,7 +263,7 @@ namespace Gaos.Routes
                     {
                         Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error, saving GameDataJson: {ex.Message}");
                         throw new Exception("could no save GameDataJson");
-                    }   
+                    }
 
 
                 }

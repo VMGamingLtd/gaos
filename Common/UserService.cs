@@ -1,8 +1,5 @@
 ﻿#pragma warning disable 8625, 8603, 8629, 8604
 
-using System.Diagnostics;
-using System.Linq.Expressions;
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 namespace Gaos.Common
@@ -11,9 +8,9 @@ namespace Gaos.Common
     public class UserService
     {
         private static string CLASS_NAME = typeof(UserService).Name;
-        private Gaos.Auth.TokenService TokenService= null;
+        private Gaos.Auth.TokenService TokenService = null;
         private HttpContext Context = null;
-        private  Gaos.Dbo.Db Db = null;
+        private Gaos.Dbo.Db Db = null;
 
         private Gaos.Dbo.Model.User? User = null;
         private GetGroupResult getGroupResult = null;
@@ -59,7 +56,7 @@ namespace Gaos.Common
                 {
                     Log.Error($"{CLASS_NAME}:{METHOD_NAME} no such user");
                     throw new Exception("no such user");
-                    
+
                 }
                 return User;
             }
@@ -70,13 +67,34 @@ namespace Gaos.Common
 
         }
 
+        public string GetCountry()
+        {
+            const string METHOD_NAME = "GetCountry()";
+            if (User == null)
+            {
+                int userId = GetUserId();
+                User = Db.User.FirstOrDefault(x => x.Id == userId);
+                if (User == null)
+                {
+                    Log.Error($"{CLASS_NAME}:{METHOD_NAME} no such user");
+                    throw new Exception("no such user");
+                }
+                return User.Country;
+            }
+            else
+            {
+                return User.Country;
+            }
+        }
+
         public (Gaos.Dbo.Model.User?, Gaos.Dbo.Model.JWT?) GetDeviceUser(int deviceId)
         {
             const string METHOD_NAME = "GetDeviceUser()";
             Gaos.Dbo.Model.User? user = null;
 
             Gaos.Dbo.Model.JWT? jwt = Db.JWT.FirstOrDefault(x => x.DeviceId == deviceId);
-            if (jwt != null) {
+            if (jwt != null)
+            {
                 user = Db.User.FirstOrDefault(x => x.Id == jwt.UserId);
                 if (user == null)
                 {
@@ -85,8 +103,8 @@ namespace Gaos.Common
                 }
                 var userType = (bool)user.IsGuest ? Gaos.Model.Token.UserType.GuestUser : Gaos.Model.Token.UserType.RegisteredUser;
                 var jwtStr = TokenService.GenerateJWT(
-                    user.Name, user.Id, deviceId, 
-                    DateTimeOffset.UtcNow.AddHours(Gaos.Common.Context.TOKEN_EXPIRATION_HOURS).ToUnixTimeSeconds(), 
+                    user.Name, user.Id, deviceId,
+                    DateTimeOffset.UtcNow.AddHours(Gaos.Common.Context.TOKEN_EXPIRATION_HOURS).ToUnixTimeSeconds(),
                     userType);
                 jwt = Db.JWT.FirstOrDefault(x => x.DeviceId == deviceId);
                 if (jwt != null)
@@ -156,14 +174,14 @@ namespace Gaos.Common
 
                 // search for Group entry where user is owner
                 var query_1 = from g in Db.Groupp
-                            join u in Db.User on g.OwnerId equals u.Id
-                            where g.OwnerId == user.Id
-                            select new GetUserGroup_query1_result
-                            {
-                                IsGroupOwner = (g != null),
-                                GroupId = (g != null) ? g.Id : -1,
-                                GroupOwnerName = (u != null) ? u.Name : "",
-                            };
+                              join u in Db.User on g.OwnerId equals u.Id
+                              where g.OwnerId == user.Id
+                              select new GetUserGroup_query1_result
+                              {
+                                  IsGroupOwner = (g != null),
+                                  GroupId = (g != null) ? g.Id : -1,
+                                  GroupOwnerName = (u != null) ? u.Name : "",
+                              };
                 var queryResult_1 = await query_1.FirstOrDefaultAsync();
 
                 if (queryResult_1 != null)
@@ -176,13 +194,13 @@ namespace Gaos.Common
                         GroupOwnerId = user.Id,
                         GroupOwnerName = queryResult_1.GroupOwnerName,
                     };
-                    
+
                     if (result.IsGroupOwner)
                     {
                         // If user has a group the group has to have at least one member otherwise user is not considered be an owner
                         var query_3 = from gm in Db.GroupMember
-                                    where gm.GroupId == result.GroupId
-                                    select (gm != null);
+                                      where gm.GroupId == result.GroupId
+                                      select (gm != null);
                         var queryResult_3 = await query_3.FirstOrDefaultAsync();
                         if (queryResult_3)
                         {
@@ -234,6 +252,31 @@ namespace Gaos.Common
                 throw new Exception($"getting user group failed");
             }
         }
-        
+
+        public async Task UpdateCountry(int userId, string country)
+        {
+            const string METHOD_NAME = "UpdateCountry()";
+
+            try
+            {
+                var user = await Db.User.FirstOrDefaultAsync(x => x.Id == userId);
+
+                if (user == null)
+                {
+                    Log.Error($"{CLASS_NAME}:{METHOD_NAME} user not found");
+                    throw new Exception("no such user");
+                }
+
+                user.Country = country;
+                await Db.SaveChangesAsync();
+
+                Log.Information($"{CLASS_NAME}:{METHOD_NAME} updated country for user {userId} to {country}");
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, $"{CLASS_NAME}:{METHOD_NAME} failed to update country for user {userId}");
+                throw new Exception("failed to update country");
+            }
+        }
     }
 }
