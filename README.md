@@ -36,7 +36,7 @@ dotnet run --no-launch-profile --urls="https://localhost:7070"
 ```
 > export ASPNETCORE_ENVIRONMENT=Test
 > dotnet publish --configuration Release
-> chown -R gaos:gaos /opt/gaos/bin/Release/net7.0/publish
+> chown -R gaos:gaos /opt/gaos/bin/Release/net8.0/publish
 ```
 
 # Init database on test server
