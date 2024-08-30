@@ -41,7 +41,7 @@
     "Certificates": {
       "Default": {
         "Path": "/opt/gaos/scripts/certs/key_store.pfx",
-        "Password": "changeit"
+        "Password": "{{ GAOS_TEST_KEY_STORE_PASSWORD | gao_decrypt }}"
       }
     }
   },
