@@ -115,7 +115,6 @@ namespace Gaos.Routes
                     UserGameDataGetResponse response;
                     int userId = request.UserId;
                     int slotId = request.SlotId;
-                    string version = request.Version; // note: version is optional, if null then no error reported if document version in mongodb does not match with requested version
 
                     if (userId != userService.GetUserId())
                     {
@@ -129,7 +128,7 @@ namespace Gaos.Routes
 
                     }
 
-                    var result = await gameDataService.GetGameDataAsync(userId, slotId, version);
+                    var result = await gameDataService.GetGameDataAsync(userId, slotId);
 
                     if (result.IsError)
                     {

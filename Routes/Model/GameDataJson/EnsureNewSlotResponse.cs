@@ -9,7 +9,7 @@ namespace Gaos.Routes.Model.GameDataJson
         public string? ErrorMessage { get; set; }
 
         public string MongoDocumentId { get; set; }
-        public string MongoDocumentVersion { get; set; }
+        public int MongoDocumentVersion { get; set; }
 
     }
 }
