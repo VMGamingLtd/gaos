@@ -97,7 +97,7 @@ namespace Gaos.Mongo
                 {
                     IsError = false,
                     Id = gameDataBsonExisting["_id"].ToString(),
-                    Version = (int)gameDataBsonExisting["_version"].ToInt64(),
+                    Version = (int)gameDataBsonExisting["_version"].ToInt32(),
                 };
             }
             else

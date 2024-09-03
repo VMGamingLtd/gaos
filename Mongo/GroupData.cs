@@ -7,8 +7,9 @@ using Serilog;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using Gaos.Mongo;
+using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 
-namespace gaos.Mongo
+namespace Gaos.Mongo
 {
 
     public class GetGameDataResult
@@ -16,7 +17,8 @@ namespace gaos.Mongo
         public bool? IsError { get; set; }
         public string? ErrorMessage { get; set; }
 
-        public string? Version { get; set; }
+        public string? Id { get; set; }
+        public int Version { get; set; }
         public string? GameData { get; set; }
     }
 
@@ -46,34 +48,34 @@ namespace gaos.Mongo
         public BsonDocument? Document { get; set; }
     }
 
-    public class GroupGameData
+    public class GroupData
     {
         private static string CLASS_NAME = typeof(UserService).Name;
 
         private readonly MongoService MongoService;
         private readonly GameData GameDataService;
+        private readonly IConfiguration configuration;
 
         private Gaos.Dbo.Model.User? User = null;
 
-        public GroupGameData(MongoService mongoService, GameData gameDataService)
+        public GroupData(MongoService mongoService, GameData gameDataService, IConfiguration configuration)
         {
             this.MongoService = mongoService;
             this.GameDataService = gameDataService;
+            this.configuration = configuration;
         }
 
-        public async Task updateOwnersGameDataInGameData(BsonDocument document, int ownerId, int slotId = 1)
+        public async Task<String> GetOwnersData(UserService.GetGroupResult group, int slotId = 1)
         {
-            const string METHOD_NAME = "updateOwnersGameDataInGameData()";
-
-            // fetch the owner's game data
-            BsonDocument ownersDocument = null;
-
-            IMongoCollection<BsonDocument> collectionGameData = await MongoService.GetCollectionForGameData();
+            const string METHOD_NAME = "GetOwnersData()";
             try
             {
+                IMongoCollection<BsonDocument> collectionGameData = await MongoService.GetCollectionForGameData();
+                BsonDocument ownersDocument = null;
+
                 var filter = Builders<BsonDocument>.Filter
                     .And(
-                        Builders<BsonDocument>.Filter.Eq("UserId", ownerId),
+                        Builders<BsonDocument>.Filter.Eq("UserId", group.GroupOwnerId),
                         Builders<BsonDocument>.Filter.Eq("SlotId", slotId)
                      );
 
@@ -83,51 +85,8 @@ namespace gaos.Mongo
                     Log.Error($"{CLASS_NAME}:{METHOD_NAME} error fetching owner's game data: not found");
                     throw new Exception("owner's game data not found");
                 }
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME} error fetching owner's game data: {ex}");
-                throw new Exception("owner's game data not found");
-            }
 
-            if (!document.Contains("GameData"))
-            {
-                document.Add("GameData", new BsonDocument());
-            }
-            BsonDocument gameDataDoc = document.GetValue("GameData").ToBsonDocument();
-
-            if (!gameDataDoc.Contains("OwnersGameData"))
-            {
-                gameDataDoc.Add("OwnersGameData", ownersDocument);
-            }
-            else
-            {
-                gameDataDoc.Set("OwnersGameData", ownersDocument);
-            }
-
-        }
-
-        public async Task updateOwnersDataInGroup(Groupp group, int slotId = 1)
-        {
-            const string METHOD_NAME = "updateOwnersDataInGroup()";
-            IMongoCollection<BsonDocument> collection = await MongoService.GetCollectionForGroupGameData();
-            try
-            {
-                var ensureResult = await EnsureGameData(group, slotId);
-                if (ensureResult.IsError == true)
-                {
-                    Log.Error($"{CLASS_NAME}:{METHOD_NAME} error updating owner's data in group, EnsureGameData() failed");
-                    throw new Exception("error updating owner's data in group, EnsureGameData() failed");
-                }
-                BsonDocument document = ensureResult.Document;
-                await updateOwnersGameDataInGameData(document, (int)group.OwnerId, slotId);
-
-                var version = document.GetValue("_version").ToInt32();
-                document.Set("_version", version + 1);
-
-                // upsert the document
-                var filter = Builders<BsonDocument>.Filter.Eq("_id", document.GetValue("_id"));
-                await collection.ReplaceOneAsync(filter, document);
+                return ownersDocument.ToString();
 
             }
             catch (Exception ex)
@@ -137,7 +96,7 @@ namespace gaos.Mongo
             }
         }
 
-        public async Task<MakeEmptyGameDataResult> MakeEmptyGameData(Groupp group, int slotId = 1)
+        public async Task<MakeEmptyGameDataResult> MakeEmptyGameData(UserService.GetGroupResult group, int slotId = 1)
         {
             const string METHOD_NAME = "MakeEmptyGameData()";
             IMongoCollection<BsonDocument> collection = await MongoService.GetCollectionForGroupGameData();
@@ -145,11 +104,11 @@ namespace gaos.Mongo
             {
                 BsonDocument document = new BsonDocument
                 {
-                    { "GroupId", group.Id },
-                    { "_version", new BsonInt32(0) },
-                    { "GameData", "{}" }
+                    { "GroupId", new BsonInt32(group.GroupId) },
+                    { "SlotId", new BsonInt32(slotId) },
+                    { "_version", new BsonInt32(0)},
+                    { "GameData", new BsonDocument()}
                 };
-                await updateOwnersGameDataInGameData(document, (int)group.OwnerId, slotId); 
                 await collection.InsertOneAsync(document);
                 return new MakeEmptyGameDataResult
                 {
@@ -171,14 +130,14 @@ namespace gaos.Mongo
             }
         }
 
-        public async Task<EnsureGameDataResult> EnsureGameData(Groupp group, int slotId = 1)
+        public async Task<EnsureGameDataResult> EnsureGameData(UserService.GetGroupResult group, int slotId = 1)
         {
             const string METHOD_NAME = "EnsureGameData()";
             IMongoCollection<BsonDocument> collection = await MongoService.GetCollectionForGroupGameData();
             try
             {
                 FilterDefinition<BsonDocument> filter = Builders<BsonDocument>.Filter.And(
-                    Builders<BsonDocument>.Filter.Eq("GroupId", group.Id),
+                    Builders<BsonDocument>.Filter.Eq("GroupId", group.GroupId),
                     Builders<BsonDocument>.Filter.Eq("SlotId", slotId)
                 );
                 SortDefinition<BsonDocument> sort = Builders<BsonDocument>.Sort
@@ -232,7 +191,7 @@ namespace gaos.Mongo
             }
         }
 
-        public async Task<GetGameDataResult> GetGameData(Groupp group, int slotId = 1)
+        public async Task<GetGameDataResult> GetGameData(UserService.GetGroupResult group, int slotId = 1)
         {
             const string METHOD_NAME = "GetGameData()";
             IMongoCollection<BsonDocument> collection = await MongoService.GetCollectionForGroupGameData();
@@ -253,7 +212,8 @@ namespace gaos.Mongo
                 return new GetGameDataResult {
                     IsError = false,
                     ErrorMessage = "",
-                    Version = document.GetValue("_version").ToString(),
+                    Id = document.GetValue("_id").ToString(),
+                    Version = document.GetValue("_version").ToInt32(),
                     GameData = document.GetValue("GameData").ToString()
                 };
 
@@ -269,7 +229,7 @@ namespace gaos.Mongo
             }
         }
 
-        public async Task<SaveGroupGameDataResult> SaveGroupGameData(Groupp group, string groupGameDataJson, int version, int slotId = 1)
+        public async Task<SaveGroupGameDataResult> SaveGroupGameData(UserService.GetGroupResult group, string groupGameDataJson, int version, int slotId = 1)
         {
             const string METHOD_NAME = "SaveGroupGameData()";
             try
@@ -299,7 +259,7 @@ namespace gaos.Mongo
                 }
 
                 var goupGameDataDoc = BsonDocument.Parse(groupGameDataJson);
-                document.GetElement("GameData").ToBsonDocument().Set("GroupData", goupGameDataDoc);
+                document.Set("GameData", goupGameDataDoc);
 
                 var filter = Builders<BsonDocument>.Filter.Eq("_id", document.GetValue("_id"));
                 await collection.ReplaceOneAsync(filter, document);

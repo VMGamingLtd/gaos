@@ -9,7 +9,7 @@ namespace Gaos.Routes
     {
 
         public static string CLASS_NAME = typeof(GameDataRoutes).Name;
-        public static RouteGroupBuilder GroupGameData(this RouteGroupBuilder group)
+        public static RouteGroupBuilder GameData(this RouteGroupBuilder group)
         {
 
             group.MapPost("/ensureNewSlot", async (EnsureNewSlotRequest request, Db db, Gaos.Common.UserService userService, Gaos.Mongo.GameData gameDataService) =>
