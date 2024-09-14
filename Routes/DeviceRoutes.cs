@@ -26,7 +26,7 @@ namespace Gaos.Routes
                 try
                 {
                     DeviceRegisterResponse response;
-
+                    UserInterfaceColors userColors = null;
 
                     if (deviceRegisterRequest.Identification == null || deviceRegisterRequest.Identification.Trim().Length == 0)
                     {
@@ -114,11 +114,13 @@ namespace Gaos.Routes
                         device.BuildVersionId = (buildVersion != null) ? buildVersion.Id : null;
                         device.BuildVersionReported = deviceRegisterRequest.BuildVersion;
 
+                        if (user_jwt.Item1 != null)
+                        {
+                            userColors = await db.UserInterfaceColors.FirstOrDefaultAsync(c => c.UserId == user_jwt.Item1.Id);
+                        }
+
                         await db.SaveChangesAsync();
                     }
-
-
-                    var userColors = await db.UserInterfaceColors.FirstOrDefaultAsync(c => c.UserId == user_jwt.Item1.Id);
 
                     response = new DeviceRegisterResponse
                     {
