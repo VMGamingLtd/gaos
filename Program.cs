@@ -5,9 +5,8 @@ using Gaos.Middleware;
 using Gaos.Routes;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
-using Serilog;
-using System;
 using MySqlConnector;
+using Serilog;
 
 if (false)
 {
@@ -53,7 +52,7 @@ var dbServerVersion = new MariaDbServerVersion(new Version(dbMajorVersion, dbMin
 builder.Services.AddDbContext<Db>(opt =>
     opt.UseMySql(dbConnectionString, dbServerVersion)
     //.LogTo(Console.WriteLine, LogLevel.Information)
-    .LogTo(Console.WriteLine, LogLevel.Warning)
+    .LogTo(Console.WriteLine, LogLevel.Debug)
     .EnableSensitiveDataLogging()
     .EnableDetailedErrors()
 );
@@ -159,7 +158,7 @@ var app = builder.Build();
 app.UseMiddleware<CookieMiddleware>();
 app.UseWebSockets();
 app.UseMiddleware<WebSocketMiddleware>();
-app.UseMiddleware<AuthMiddleware>(); 
+app.UseMiddleware<AuthMiddleware>();
 
 
 app.Map("/", (IConfiguration configuration) =>

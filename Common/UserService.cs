@@ -1,5 +1,6 @@
 ﻿#pragma warning disable 8625, 8603, 8629, 8604
 
+using Gaos.Dbo.Model;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 namespace Gaos.Common
@@ -64,7 +65,6 @@ namespace Gaos.Common
             {
                 return User;
             }
-
         }
 
         public string GetCountry()
@@ -84,6 +84,26 @@ namespace Gaos.Common
             else
             {
                 return User.Country;
+            }
+        }
+
+        public string GetLanguage()
+        {
+            const string METHOD_NAME = "GetLanguage()";
+            if (User == null)
+            {
+                int userId = GetUserId();
+                User = Db.User.FirstOrDefault(x => x.Id == userId);
+                if (User == null)
+                {
+                    Log.Error($"{CLASS_NAME}:{METHOD_NAME} no such user");
+                    throw new Exception("no such user");
+                }
+                return User.Language;
+            }
+            else
+            {
+                return User.Language;
             }
         }
 
@@ -276,6 +296,61 @@ namespace Gaos.Common
             {
                 Log.Error(e, $"{CLASS_NAME}:{METHOD_NAME} failed to update country for user {userId}");
                 throw new Exception("failed to update country");
+            }
+        }
+
+        public async Task UpdateLanguage(int userId, string language)
+        {
+            const string METHOD_NAME = "UpdateLanguage()";
+
+            try
+            {
+                var user = await Db.User.FirstOrDefaultAsync(x => x.Id == userId);
+
+                if (user == null)
+                {
+                    Log.Error($"{CLASS_NAME}:{METHOD_NAME} user not found");
+                    throw new Exception("no such user");
+                }
+
+                user.Language = language;
+                await Db.SaveChangesAsync();
+
+                Log.Information($"{CLASS_NAME}:{METHOD_NAME} updated language for user {userId} to {language}");
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, $"{CLASS_NAME}:{METHOD_NAME} failed to update language for user {userId}");
+                throw new Exception("failed to update language");
+            }
+        }
+
+        public async Task UpdateUserColors(int userId, UserInterfaceColors colors)
+        {
+            const string METHOD_NAME = "UpdateUserColors()";
+
+            try
+            {
+                var userColors = await Db.UserInterfaceColors.FirstOrDefaultAsync(x => x.UserId == userId);
+
+                if (userColors == null)
+                {
+                    userColors = colors;
+                    await Db.UserInterfaceColors.AddAsync(userColors);
+                }
+                else
+                {
+                    userColors = colors;
+                }
+
+                await Db.SaveChangesAsync();
+
+                Log.Information($"{CLASS_NAME}:{METHOD_NAME} updated colors for user {userId}");
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, $"{CLASS_NAME}:{METHOD_NAME} failed to update colors for user {userId}");
+                throw new Exception("failed to update user colors");
             }
         }
     }

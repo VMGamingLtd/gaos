@@ -127,6 +127,8 @@ namespace Gaos.Routes
                             ErrorMessage = null,
                             UserName = user.Name,
                             UserId = user.Id,
+                            Language = user.Language,
+                            Email = user.Email,
                             IsGuest = false,
                             Jwt = jwtStr,
                         };
@@ -306,6 +308,8 @@ namespace Gaos.Routes
                             ErrorMessage = null,
                             UserName = guest.Name,
                             UserId = guest.Id,
+                            Country = guest.Country,
+                            Language = guest.Language,
                             IsGuest = true,
                             Jwt = jwtStr,
                         };
@@ -478,6 +482,8 @@ namespace Gaos.Routes
                                 DeviceId = device.Id,
                                 EmailVerificationCode = Guid.NewGuid().ToString(),
                                 IsEmailVerified = false,
+                                Language = registerRequest.Language,
+                                Country = registerRequest.Country,
                             };
                             await db.User.AddAsync(user);
                             await db.SaveChangesAsync();
@@ -503,6 +509,8 @@ namespace Gaos.Routes
                             guest.DeviceId = device.Id;
                             guest.EmailVerificationCode = Guid.NewGuid().ToString();
                             guest.IsEmailVerified = false;
+                            guest.Language = registerRequest.Language;
+                            guest.Country = registerRequest.Country;
                             await db.SaveChangesAsync();
 
                             jwtStr = tokenService.GenerateJWT(registerRequest.UserName, guest.Id, device.Id, DateTimeOffset.UtcNow.AddHours(Gaos.Common.Context.TOKEN_EXPIRATION_HOURS).ToUnixTimeSeconds(), Gaos.Model.Token.UserType.RegisteredUser);
@@ -521,6 +529,7 @@ namespace Gaos.Routes
                             IsError = false,
                             User = user,
                             Jwt = jwtStr,
+                            UserInterfaceColors = registerRequest.UserInterfaceColors,
                         };
                         return Results.Json(response);
                     }
@@ -852,6 +861,32 @@ namespace Gaos.Routes
                 {
                     await userService.UpdateCountry(updateRequest.UserId, updateRequest.Country);
                     return Results.Ok(new { success = true, message = "Country updated successfully" });
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(new { success = false, message = ex.Message });
+                }
+            });
+
+            group.MapPost("/updateLanguage", async (UpdateLanguageRequest updateRequest, Gaos.Common.UserService userService) =>
+            {
+                try
+                {
+                    await userService.UpdateLanguage(updateRequest.UserId, updateRequest.Language);
+                    return Results.Ok(new { success = true, message = "Language updated successfully" });
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(new { success = false, message = ex.Message });
+                }
+            });
+
+            group.MapPost("/updateUserColors", async (UpdateUserColorsRequest updateRequest, Gaos.Common.UserService userService) =>
+            {
+                try
+                {
+                    await userService.UpdateUserColors(updateRequest.UserId, updateRequest.UserInterfaceColors);
+                    return Results.Ok(new { success = true, message = "Colors updated successfully" });
                 }
                 catch (Exception ex)
                 {

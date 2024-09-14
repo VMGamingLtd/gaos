@@ -1,15 +1,12 @@
 ﻿#pragma warning disable 8600, 8602, 8604, 8605
 
-using Microsoft.EntityFrameworkCore;
-using System.Text;
-using System.Text.Json;
-using Serilog;
-using Gaos.Auth;
-using Gaos.Dbo;
-using Gaos.Routes.Model.DeviceJson;
-using Gaos.Dbo.Model;
 using Gaos.Common;
+using Gaos.Dbo;
+using Gaos.Dbo.Model;
 using Gaos.Mongo;
+using Gaos.Routes.Model.DeviceJson;
+using Microsoft.EntityFrameworkCore;
+using Serilog;
 using static Gaos.Mongo.GameData;
 
 namespace Gaos.Routes
@@ -41,7 +38,7 @@ namespace Gaos.Routes
                         };
                         return Results.Json(response);
                     }
-                    
+
                     string identification = deviceRegisterRequest.Identification;
                     bool isCookie = false;
 
@@ -107,8 +104,10 @@ namespace Gaos.Routes
                         db.Device.Add(device);
                         await db.SaveChangesAsync();
 
-                    } else {
-                        user_jwt  = userSerice.GetDeviceUser(device.Id);
+                    }
+                    else
+                    {
+                        user_jwt = userSerice.GetDeviceUser(device.Id);
 
                         device.Identification = identification;
                         device.PlatformType = platformType;
@@ -119,7 +118,7 @@ namespace Gaos.Routes
                     }
 
 
-
+                    var userColors = await db.UserInterfaceColors.FirstOrDefaultAsync(c => c.UserId == user_jwt.Item1.Id);
 
                     response = new DeviceRegisterResponse
                     {
@@ -127,9 +126,10 @@ namespace Gaos.Routes
                         DeviceId = device.Id,
                         Identification = device.Identification,
                         PlatformType = device.PlatformType.ToString(),
-                        BuildVersion = ( buildVersion != null ) ? buildVersion.Version : "unknown",
+                        BuildVersion = (buildVersion != null) ? buildVersion.Version : "unknown",
                         User = user_jwt.Item1,
                         JWT = user_jwt.Item2,
+                        UserInterfaceColors = userColors
                     };
 
                     if (response.User != null)

@@ -1,18 +1,16 @@
-﻿using Serilog;
-namespace Gaos.Dbo
+﻿namespace Gaos.Dbo
 {
-    using Microsoft.EntityFrameworkCore;
-    using System.Xml;
     using Gaos.Dbo.Model;
     using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
+    using Microsoft.EntityFrameworkCore;
 
     public class Db : DbContext, IDataProtectionKeyContext
     {
         private IConfiguration Configuration;
         private IWebHostEnvironment Environment;
         //public Db(DbContextOptions<Db> options) : base(options) { }
-        public Db(DbContextOptions<Db> options, IConfiguration configuration, IWebHostEnvironment environment) : base(options) 
-        { 
+        public Db(DbContextOptions<Db> options, IConfiguration configuration, IWebHostEnvironment environment) : base(options)
+        {
             this.Configuration = configuration;
             this.Environment = environment;
         }
@@ -34,6 +32,7 @@ namespace Gaos.Dbo
         public DbSet<Groupp> Groupp => Set<Groupp>();
         public DbSet<GroupMember> GroupMember => Set<GroupMember>();
         public DbSet<GroupMemberRequest> GroupMemberRequest => Set<GroupMemberRequest>();
+        public DbSet<UserInterfaceColors> UserInterfaceColors => Set<UserInterfaceColors>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -77,6 +76,10 @@ namespace Gaos.Dbo
             modelBuilder.Entity<JWT>().HasKey(e => e.Id);
             modelBuilder.Entity<JWT>().HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
             modelBuilder.Entity<JWT>().HasOne(e => e.Device).WithMany().HasForeignKey(e => e.DeviceId);
+
+            // User Interface Colors
+            modelBuilder.Entity<UserInterfaceColors>().HasKey(e => e.Id);
+            modelBuilder.Entity<UserInterfaceColors>().HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
 
             // BuildVersion
             modelBuilder.Entity<BuildVersion>().HasKey(e => e.Id);
@@ -127,7 +130,6 @@ namespace Gaos.Dbo
             modelBuilder.Entity<GroupMemberRequest>().HasOne(e => e.Group).WithMany().HasForeignKey(e => e.GroupId);
             modelBuilder.Entity<GroupMemberRequest>().HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
             modelBuilder.Entity<GroupMemberRequest>().HasIndex(e => new { e.GroupId, e.UserId }).IsUnique(true);
-
 
             Gaos.Seed.SeedAll.Seed(modelBuilder, Configuration, Environment);
         }

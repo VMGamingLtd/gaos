@@ -1,4 +1,6 @@
 #pragma warning disable 8632, 8618
+using Gaos.Dbo.Model;
+
 namespace Gaos.Routes.Model.DeviceJson
 {
 
@@ -10,9 +12,9 @@ namespace Gaos.Routes.Model.DeviceJson
         public int SlotId { get; set; }
 
         public string UserName { get; set; }
-        public int Seconds { get; set; } 
-        public int Minutes { get; set; } 
-        public int Hours { get; set; } 
+        public int Seconds { get; set; }
+        public int Minutes { get; set; }
+        public int Hours { get; set; }
     }
 
     [System.Serializable]
@@ -28,7 +30,7 @@ namespace Gaos.Routes.Model.DeviceJson
 
         public Dbo.Model.User? User { get; set; }
         public Dbo.Model.JWT? JWT { get; set; }
-
+        public UserInterfaceColors? UserInterfaceColors { get; set; }
         public DeviceRegisterResponseUserSlot[]? UserSlots { get; set; }
 
     }
