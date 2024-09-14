@@ -6,5 +6,6 @@
     {
         public int GroupId { get; set; }
         public  int MaxCount { get; set; }
+        public bool IsCountOnly { get; set; }
     }
 }

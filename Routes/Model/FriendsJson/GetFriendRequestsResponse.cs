@@ -14,5 +14,6 @@ namespace Gaos.Routes.Model.FriendsJson
         public string? ErrorMessage { get; set; }
 
         public System.Collections.Generic.List<GetFriendRequestsResponseListItem>? FriendRequests { get; set; }
+        public int? TotalCount { get; set; }
     }
 }

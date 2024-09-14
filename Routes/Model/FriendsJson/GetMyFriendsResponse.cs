@@ -15,5 +15,6 @@ namespace Gaos.Routes.Model.FriendsJson
         public string? ErrorMessage { get; set; }
 
         public GroupMembersListUser[]? Users { get; set; }
+        public int? TotalCount { get; set; }
     }
 }

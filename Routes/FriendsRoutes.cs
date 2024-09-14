@@ -124,55 +124,11 @@ limit  @maxCount
 
         }
 
-        /*
-        public record GetUserFriendsResult(int UserId, string UserName);
-        public static async Task<List<GetUserFriendsResult>> GetUserFriends(MySqlConnection dbConn, int userId, int maxCount)
-        {
-            const string METHOD_NAME = "GetUserFriends()";
-            // Select users that are friends of logged in user (identified by method parameter userId).
-            // The friedship to looged in user is determined via membership in group owned by logged in user, any group member is a friend of the group owner.
-            var sqlQuery =
-@$"
-select
-    User.Id as UserId,
-    User.Name as UserName
-from
-    GroupMember
-join Groupp on Groupp.Id = GroupMember.GroupId
-join User on User.Id = GroupMember.UserId
-where
-    Groupp.OwnerId = @userId 
-limit  @maxCount
-";
-            try
-            {
-                await dbConn.OpenAsync();
-                await using var command = dbConn.CreateCommand();
-                command.CommandText = sqlQuery;
-                command.Parameters.AddWithValue("@userId", userId);
-                command.Parameters.AddWithValue("@maxCount", maxCount);
-                using var reader = await command.ExecuteReaderAsync();
 
-                List<GetUserFriendsResult> result = new List<GetUserFriendsResult>();
-                while (await reader.ReadAsync())
-                {
-                    var _UserId = reader.GetInt32(0);
-                    var _UserName = reader.GetString(1);
-                    result.Add(new GetUserFriendsResult(_UserId, _UserName));
-                }
-
-                return result;
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
-                throw new Exception("internal error");
-            }
-        }
-        */
-
-        public record GetRequestsForFriendRequestSearchResult(int GroupId, int GroupOwnerId, string GroupOwnerName); 
-        public static async  Task<List<GetRequestsForFriendRequestSearchResult>> GetRequestsForFriendRequestSearch(MySqlConnection dbConn, int userId, string ownerNamePattern, int maxCount)
+        public record GetRequestsForFriendRequestSearchResult(int GroupId, int GroupOwnerId, string GroupOwnerName, int TotalCount); 
+        public static async  Task<List<GetRequestsForFriendRequestSearchResult>> GetRequestsForFriendRequestSearch(MySqlConnection dbConn, 
+                                                                                                                    int userId, string ownerNamePattern, 
+                                                                                                                    int maxCount, bool isCountOnly)
         {
             const string METHOD_NAME = "GetRequestsForFriendRequestSearch()";
             string sqlQuery;
@@ -197,7 +153,9 @@ limit  @maxCount
             }
             else
             {
-                sqlQuery =
+                if (!isCountOnly)
+                {
+                    sqlQuery =
     @$"
 select
     Groupp.Id as GroupId,
@@ -212,9 +170,23 @@ where
     User.Id = @userId 
 limit  @maxCount
 ";
+                }
+                else
+                {
+                    sqlQuery =
+    @$"
+select
+    count(*) as TotalCount
+from
+    GroupMemberRequest
+    join User on GroupMemberRequest.UserId = User.Id
+    join Groupp on GroupMemberRequest.GroupId = Groupp.Id
+    join User as Owner on Groupp.OwnerId = Owner.Id
+where
+    User.Id = @userId 
+";
+                }
             }
-
-            Log.Information($"{CLASS_NAME}:{METHOD_NAME}: sqlQuery: {sqlQuery}"); //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
             try
             {
@@ -232,17 +204,35 @@ limit  @maxCount
                     command.Parameters.AddWithValue("@ownerNamePattern", ownerNamePattern);
                 }
                 using var reader = await command.ExecuteReaderAsync();
-
-                List<GetRequestsForFriendRequestSearchResult> result = new List<GetRequestsForFriendRequestSearchResult>();
-                while (await reader.ReadAsync())
+                if (!isCountOnly)
                 {
-                    var _GroupId = reader.GetInt32(0);
-                    var _GroupOwnerId = reader.GetInt32(1);
-                    var _GroupOwnerName = reader.GetString(2);
-                    result.Add(new GetRequestsForFriendRequestSearchResult(_GroupId, _GroupOwnerId, _GroupOwnerName));
-                }
 
-                return result;
+                    List<GetRequestsForFriendRequestSearchResult> result = new List<GetRequestsForFriendRequestSearchResult>();
+                    while (await reader.ReadAsync())
+                    {
+                        var _GroupId = reader.GetInt32(0);
+                        var _GroupOwnerId = reader.GetInt32(1);
+                        var _GroupOwnerName = reader.GetString(2);
+                        result.Add(new GetRequestsForFriendRequestSearchResult(_GroupId, _GroupOwnerId, _GroupOwnerName, 0));
+                    }
+
+                    return result;
+                }
+                else
+                {
+                    if (await reader.ReadAsync())
+                    {
+                        var _TotalCount = reader.GetInt32(0);
+                        List<GetRequestsForFriendRequestSearchResult> result = new List<GetRequestsForFriendRequestSearchResult>();
+                        result.Add(new GetRequestsForFriendRequestSearchResult(0, 0, "", _TotalCount));
+                        return result;
+                    }
+                    else
+                    {
+                        Log.Error($"{CLASS_NAME}:{METHOD_NAME}: no count returned from db");
+                        throw new Exception("no count returned from db");
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -405,48 +395,88 @@ limit  @maxCount
 
                     int groupId = getMyFriendsRequest.GroupId;
                     GroupMembersListUser[] members;
+                    int membersTotalCount = 0;
 
                     if (userIsGroupOwner || userIsGroupMember)
                     {
-                        // Read group members up to maxCount
-                        var query = from groupMember in db.GroupMember
-                                    join user in db.User on groupMember.UserId equals user.Id
-                                    where groupMember.GroupId == groupId
-                                    select new getMyFriends_GroupMemberQqueryResult
-                                    {
-                                        UserId = user.Id,
-                                        UserName = user.Name,
-                                    };
-                        getMyFriends_GroupMemberQqueryResult[] groupMembers = await query
-                            .Take(maxCount)
-                            .ToArrayAsync();
-
-
-                        members = new GroupMembersListUser[groupMembers.Length];
-                        // add other members to the list
-                        for (int i = 0; i < groupMembers.Length; i++)
+                        if (!getMyFriendsRequest.IsCountOnly)
                         {
-                            members[i] = new GroupMembersListUser
+                            // Read group members up to maxCount
+                            var query = from groupMember in db.GroupMember
+                                        join user in db.User on groupMember.UserId equals user.Id
+                                        where groupMember.GroupId == groupId
+                                        select new getMyFriends_GroupMemberQqueryResult
+                                        {
+                                            UserId = user.Id,
+                                            UserName = user.Name,
+                                        };
+                            getMyFriends_GroupMemberQqueryResult[] groupMembers = await query
+                                .Take(maxCount)
+                                .ToArrayAsync();
+
+
+                            members = new GroupMembersListUser[groupMembers.Length];
+                            // add other members to the list
+                            for (int i = 0; i < groupMembers.Length; i++)
                             {
-                                UserId = groupMembers[i].UserId,
-                                UserName = groupMembers[i].UserName,
+                                members[i] = new GroupMembersListUser
+                                {
+                                    UserId = groupMembers[i].UserId,
+                                    UserName = groupMembers[i].UserName,
+                                };
+                            }
+
+                            // send response
+                            response = new GetMyFriendsResponse
+                            {
+                                IsError = false,
+                                ErrorMessage = null,
+                                Users = members,
                             };
+                            return Results.Json(response);
+                        }
+                        else
+                        {
+                            // Read total count of group members
+                            membersTotalCount = await db.GroupMember
+                                .Where(x => x.GroupId == groupId)
+                                .CountAsync();
+                            // send response
+                            response = new GetMyFriendsResponse
+                            {
+                                IsError = false,
+                                ErrorMessage = null,
+                                TotalCount = membersTotalCount,
+                            };
+                            return Results.Json(response);
                         }
                     }
                     else
                     {
-                        members = Array.Empty<GroupMembersListUser>();
+                        if (!getMyFriendsRequest.IsCountOnly)
+                        {
+                            members = Array.Empty<GroupMembersListUser>();
+                            // send response
+                            response = new GetMyFriendsResponse
+                            {
+                                IsError = false,
+                                ErrorMessage = null,
+                                Users = members,
+                            };
+                            return Results.Json(response);
+                        }
+                        else
+                        {
+                            // send response
+                            response = new GetMyFriendsResponse
+                            {
+                                IsError = false,
+                                ErrorMessage = null,
+                                TotalCount = 0,
+                            };
+                            return Results.Json(response);
+                        }
                     }
-
-                    // send response
-                    response = new GetMyFriendsResponse
-                    {
-                        IsError = false,
-                        ErrorMessage = null,
-                        Users = members,
-                    };
-                    return Results.Json(response);
-
                 }
                 catch (Exception ex)
                 {
@@ -662,28 +692,44 @@ limit  @maxCount
                         int maxCount = getFriendRequestsRequest.MaxCount;
 
 
-                        var friendRequestsSerach = await GetRequestsForFriendRequestSearch(dbConn, userId, ownerNamePattern, maxCount);
-
-
-                        List<GetFriendRequestsResponseListItem> friendRequests = new List<GetFriendRequestsResponseListItem>();
-                        foreach (var item in friendRequestsSerach)
+                        if (!getFriendRequestsRequest.IsCountOnly)
                         {
-                            friendRequests.Add(new GetFriendRequestsResponseListItem
+                            var friendRequestsSerach = await GetRequestsForFriendRequestSearch(dbConn, userId, ownerNamePattern, maxCount, false);
+
+
+                            List<GetFriendRequestsResponseListItem> friendRequests = new List<GetFriendRequestsResponseListItem>();
+                            foreach (var item in friendRequestsSerach)
                             {
-                                GroupId = item.GroupId,
-                                GroupOwnerId = item.GroupOwnerId,
-                                GroupOwnerName = item.GroupOwnerName,
-                            });
-                        }
+                                friendRequests.Add(new GetFriendRequestsResponseListItem
+                                {
+                                    GroupId = item.GroupId,
+                                    GroupOwnerId = item.GroupOwnerId,
+                                    GroupOwnerName = item.GroupOwnerName,
+                                });
+                            }
 
-                        response = new GetFriendRequestsResponse
+                            response = new GetFriendRequestsResponse
+                            {
+                                IsError = false,
+                                ErrorMessage = null,
+                                FriendRequests = friendRequests,
+                            };
+                            transaction.Commit();
+                            return Results.Json(response);
+                        }
+                        else
                         {
-                            IsError = false,
-                            ErrorMessage = null,
-                            FriendRequests = friendRequests,
-                        };
-                        transaction.Commit();
-                        return Results.Json(response);
+                            var friendRequestsSerach = await GetRequestsForFriendRequestSearch(dbConn, userId, ownerNamePattern, maxCount, true);
+                            int totalCount = friendRequestsSerach[0].TotalCount;
+                            response = new GetFriendRequestsResponse
+                            {
+                                IsError = false,
+                                ErrorMessage = null,
+                                TotalCount = totalCount,
+                            };
+                            transaction.Commit();
+                            return Results.Json(response);
+                        }
 
                     }
                     catch (Exception ex)
