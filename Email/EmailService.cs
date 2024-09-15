@@ -165,7 +165,6 @@ namespace Gaos.Email
             catch (Exception e)
             {
                 Log.Error(e, $"{CLASS_NAME}:{METHOD_NAME}: error: {e.Message}");
-                throw new Exception("error sending verification email");
             }
         }
 
@@ -209,7 +208,6 @@ namespace Gaos.Email
             catch (Exception e)
             {
                 Log.Error(e, $"{CLASS_NAME}:{METHOD_NAME}: error: {e.Message}");
-                throw new Exception("error sending verification email");
             }
         }
     }
