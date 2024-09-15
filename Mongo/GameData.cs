@@ -1,10 +1,10 @@
 ﻿#pragma warning disable 8600, 8601, 8618, 8604
 
-using Serilog;
-using MongoDB.Driver;
 using MongoDB.Bson;
+using MongoDB.Driver;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Serilog;
 
 namespace Gaos.Mongo
 {
@@ -12,7 +12,7 @@ namespace Gaos.Mongo
     public class GetGameDataAsyncResult
     {
         public string Id { get; set; }
-        public string Version { get; set; }
+        public int Version { get; set; }
         public string GameDataJson { get; set; }
 
         public bool IsError { get; set; }
@@ -29,7 +29,7 @@ namespace Gaos.Mongo
     public class SaveGameDataAsyncResult
     {
         public string Id { get; set; }
-        public string Version { get; set; }
+        public int Version { get; set; }
 
         public bool IsError { get; set; }
         public string ErrorMessage { get; set; }
@@ -57,12 +57,12 @@ namespace Gaos.Mongo
             public string ErrorMessage { get; set; }
 
             public string Id { get; set; }
-            public string Version { get; set; }
+            public int Version { get; set; }
         }
 
-        public async Task<EnsureNewSlotResult> EnsureNewGameSlot(int userId, int slotId, string userName)
+        public async Task<EnsureNewSlotResult> EnsureNewGameSlot(int userId, int slotId, string userName, string country)
         {
-            var _version = "0";
+            int _version = 0;
 
             BsonDocument gameData = new BsonDocument
             {
@@ -76,8 +76,9 @@ namespace Gaos.Mongo
             {
                 { "UserId", userId },
                 { "SlotId", slotId },
+                { "Country", country },
                 { "IsNewSlot", true },
-                { "_version", _version},
+                { "_version", new BsonInt32(_version)},
                 { "GameData", gameData }
             };
 
@@ -96,7 +97,7 @@ namespace Gaos.Mongo
                 {
                     IsError = false,
                     Id = gameDataBsonExisting["_id"].ToString(),
-                    Version = gameDataBsonExisting["_version"].ToString(),
+                    Version = (int)gameDataBsonExisting["_version"].ToInt32(),
                 };
             }
             else
@@ -108,7 +109,7 @@ namespace Gaos.Mongo
                 {
                     IsError = false,
                     Id = gameDataBsonExisting["_id"].ToString(),
-                    Version = gameDataBsonExisting["_version"].ToString(),
+                    Version = gameDataBsonExisting["_version"].ToInt32(),
                 };
             }
         }
@@ -146,14 +147,14 @@ namespace Gaos.Mongo
             {
                 Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME} {ex}");
                 Log.Information($"{CLASS_NAME}:{METHOD_NAME} gameDataBson: {gameDataBson.ToJson()}");
-                Log.Information($"{CLASS_NAME}:{METHOD_NAME} gameDataDiffJson: {gameDataDiffJson}"); 
+                Log.Information($"{CLASS_NAME}:{METHOD_NAME} gameDataDiffJson: {gameDataDiffJson}");
                 throw new Exception("failed to add game data diff");
             }
         }
 
         // Save the game data to the database at the specified slot for the specified user.
 
-        public async Task<SaveGameDataAsyncResult> SaveGameDataAsync(int userId, int slotId, string gameDataJson, string version, bool isGameDataDiff, string gameDataJsonDiffBase = "")
+        public async Task<SaveGameDataAsyncResult> SaveGameDataAsync(int userId, int slotId, string gameDataJson, int version, bool isGameDataDiff, string gameDataJsonDiffBase = "")
         {
             const string METHOD_NAME = "SaveGameDataAsync";
             IMongoCollection<BsonDocument> collection = await MongoService.GetCollectionForGameData();
@@ -180,12 +181,12 @@ namespace Gaos.Mongo
                         throw new Exception("game data diff is not supported for new game slot");
                     }
 
-                    ulong _version = 0;
+                    int _version = 0;
                     BsonDocument gameDataBson = BsonDocument.Parse(gameDataJson);
 
 
                     var update = Builders<BsonDocument>.Update
-                        .Set("_version", _version.ToString())
+                        .Set("_version", new BsonInt32(_version))
                         .Set("GameData", gameDataBson);
                     var options = new UpdateOptions { IsUpsert = true };
 
@@ -197,8 +198,8 @@ namespace Gaos.Mongo
                         return new SaveGameDataAsyncResult
                         {
                             IsError = false,
-                            Version = _version.ToString(),
-                            GameDataJson = doc["GameData"].ToJson() 
+                            Version = _version,
+                            GameDataJson = doc["GameData"].ToJson()
                         };
                     }
                     else
@@ -207,7 +208,7 @@ namespace Gaos.Mongo
                         return new SaveGameDataAsyncResult
                         {
                             IsError = false,
-                            Version = _version.ToString()
+                            Version = _version
                         };
                     }
                 }
@@ -218,9 +219,10 @@ namespace Gaos.Mongo
                         Log.Information($"diff base: {gameDataJsonDiffBase}");
                         JObject gameDataJsonDiffBaseJObject = JObject.Parse(gameDataJsonDiffBase);
                         Log.Information($"doc: {doc["GameData"].ToJson()}");
-                        JObject gameDataJsontMongoJObject  = JObject.Parse(doc["GameData"].ToJson());
+                        JObject gameDataJsontMongoJObject = JObject.Parse(doc["GameData"].ToJson());
                         var isBasesEqual = jsondiff.Difference.IsEqualValues(gameDataJsonDiffBaseJObject, gameDataJsontMongoJObject);
-                        if (!isBasesEqual.IsEqual) {
+                        if (!isBasesEqual.IsEqual)
+                        {
                             Log.Error($"{CLASS_NAME}:{METHOD_NAME} game data diff base mismatch");
                             Log.Information($"{gameDataJsonDiffBase}");
                             Log.Information($"{gameDataJsontMongoJObject}");
@@ -239,7 +241,7 @@ namespace Gaos.Mongo
 
                     // document exists, update the document if the version matches
 
-                    string docVersion;
+                    int docVersion;
                     string docId;
                     if (!doc.Contains("_version"))
                     {
@@ -250,8 +252,10 @@ namespace Gaos.Mongo
                             ErrorMessage = "version mismatch (version does not exist)",
                             ErrorKind = SaveGameDataAsyncResultErrorKind.VersionMismatchError
                         };
-                    } else {
-                        docVersion = doc["_version"].ToString();
+                    }
+                    else
+                    {
+                        docVersion = doc["_version"].ToInt32();
                         docId = doc["_id"].ToString();
                     }
 
@@ -268,7 +272,7 @@ namespace Gaos.Mongo
 
 
                     // increment the version
-                    ulong _version = ulong.Parse(docVersion) + 1;
+                    int _version = docVersion + 1;
 
                     // compute the new game data
                     BsonDocument gameDataBson;
@@ -283,7 +287,7 @@ namespace Gaos.Mongo
 
                     // save the new game data
                     var update = Builders<BsonDocument>.Update
-                        .Set("_version", _version.ToString())
+                        .Set("_version", new BsonInt32(_version))
                         .Set("GameData", gameDataBson);
 
                     await collection.UpdateOneAsync(filter, update);
@@ -295,7 +299,7 @@ namespace Gaos.Mongo
                         {
                             IsError = false,
                             Id = docId,
-                            Version = _version.ToString(),
+                            Version = _version,
                             GameDataJson = doc["GameData"].ToJson()
                         };
                     }
@@ -305,7 +309,7 @@ namespace Gaos.Mongo
                         {
                             IsError = false,
                             Id = docId,
-                            Version = _version.ToString()
+                            Version = _version
                         };
                     }
 
@@ -324,7 +328,7 @@ namespace Gaos.Mongo
 
         // Get the game data to from database from the specified slot for the specified user.
 
-        public async Task<GetGameDataAsyncResult> GetGameDataAsync(int userId, int slotId, string? version = null)
+        public async Task<GetGameDataAsyncResult> GetGameDataAsync(int userId, int slotId, int? version = null)
         {
             const string METHOD_NAME = "GetGameDataAsync";
             IMongoCollection<BsonDocument> collection = await MongoService.GetCollectionForGameData();
@@ -349,7 +353,7 @@ namespace Gaos.Mongo
                     };
                 }
 
-                if (version != null && version != doc["_version"].ToString())
+                if (version != null && version != doc["_version"].ToInt32())
                 {
                     return new GetGameDataAsyncResult
                     {
@@ -363,7 +367,7 @@ namespace Gaos.Mongo
                 {
                     IsError = false,
                     Id = doc["_id"].ToString(),
-                    Version = doc["_version"].ToString(),
+                    Version = doc["_version"].ToInt32(),
                     GameDataJson = doc["GameData"].ToJson()
                 };
             }
@@ -377,7 +381,7 @@ namespace Gaos.Mongo
         public class GetUserSlotIdsResult
         {
             public string _id { get; set; }
-            public string _version { get; set; }
+            public int _version { get; set; }
             public int UserId { get; set; }
             public int SlotId { get; set; }
 
@@ -426,7 +430,7 @@ namespace Gaos.Mongo
                 slotIds.Add(new GetUserSlotIdsResult
                 {
                     _id = gameDataBson["_id"].ToString(),
-                    _version = gameDataBson["_version"].ToString(),
+                    _version = gameDataBson["_version"].ToInt32(),
                     UserId = userId,
                     SlotId = gameDataBson["SlotId"].ToInt32(),
 

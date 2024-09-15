@@ -6,5 +6,6 @@ namespace Gaos.Routes.Model.FriendsJson
     {
         public string? OwnerNamePattern { get; set; }
         public int MaxCount { get; set; }
+        public bool IsCountOnly { get; set; }
     }
 }

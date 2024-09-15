@@ -8,7 +8,7 @@ namespace Gaos.Routes.Model.GameDataJson
     {
         public int  UserId  { get; set; }
         public int  SlotId  { get; set; }
-        public string? Version  { get; set; }
+        public int Version  { get; set; }
         public string? GameDataJson  { get; set; }
         public bool? IsGameDataDiff  { get; set; }
         public string? GameDataDiffBase  { get; set; }

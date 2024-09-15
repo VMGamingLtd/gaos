@@ -1,18 +1,15 @@
 #pragma warning disable 8600, 8602, 8604, 0162
 
-using Microsoft.EntityFrameworkCore;
 using Gaos.Dbo;
-using Gaos.Routes;
-using Serilog;
 using Gaos.Middleware;
-using System.Diagnostics;
-using System.Net.WebSockets;
-using Microsoft.AspNetCore.Http;
+using Gaos.Routes;
 using Microsoft.AspNetCore.DataProtection;
-using System;
+using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
+using Serilog;
 
-if (false) {
+if (false)
+{
     gaos.Tests.Test.TestAll();
     Console.WriteLine("Press any key to exit program");
     Console.ReadKey();
@@ -52,10 +49,10 @@ var dbMinorVersion = builder.Configuration.GetValue<int>("db_minor_version");
 var dbServerVersion = new MariaDbServerVersion(new Version(dbMajorVersion, dbMinorVersion));
 
 
-builder.Services.AddDbContext<Db>(opt => 
+builder.Services.AddDbContext<Db>(opt =>
     opt.UseMySql(dbConnectionString, dbServerVersion)
     //.LogTo(Console.WriteLine, LogLevel.Information)
-    .LogTo(Console.WriteLine, LogLevel.Warning)
+    .LogTo(Console.WriteLine, LogLevel.Debug)
     .EnableSensitiveDataLogging()
     .EnableDetailedErrors()
 );
@@ -84,17 +81,20 @@ string guestNamesFilePath = builder.Configuration.GetValue<string>("guest_names_
 
 builder.Services.AddHttpContextAccessor();
 
-builder.Services.AddScoped<Gaos.Auth.TokenService>(provider => {
+builder.Services.AddScoped<Gaos.Auth.TokenService>(provider =>
+{
     Db db = provider.GetService<Db>();
-    return new Gaos.Auth.TokenService(builder.Configuration,  db);
-}); 
+    return new Gaos.Auth.TokenService(builder.Configuration, db);
+});
 
-builder.Services.AddScoped<Gaos.Common.GuestService>(provider => {
+builder.Services.AddScoped<Gaos.Common.GuestService>(provider =>
+{
     Db db = provider.GetService<Db>();
     return new Gaos.Common.GuestService(db, guestNamesFilePath);
-}); 
+});
 
-builder.Services.AddScoped<Gaos.Common.UserService>(provider => {
+builder.Services.AddScoped<Gaos.Common.UserService>(provider =>
+{
     HttpContext context = provider.GetService<IHttpContextAccessor>()?.HttpContext;
     Gaos.Auth.TokenService tokenService = provider.GetService<Gaos.Auth.TokenService>();
     Gaos.Dbo.Db db = provider.GetService<Gaos.Dbo.Db>();
@@ -112,6 +112,13 @@ builder.Services.AddScoped<Gaos.Mongo.GameData>(provider =>
     return new Gaos.Mongo.GameData(mongoService);
 });
 
+builder.Services.AddScoped<Gaos.Mongo.GroupData>(provider =>
+{
+    Gaos.Mongo.MongoService mongoService = provider.GetService<Gaos.Mongo.MongoService>();
+    Gaos.Mongo.GameData gameDataService = new Gaos.Mongo.GameData(mongoService);
+    return new Gaos.Mongo.GroupData(mongoService, gameDataService, builder.Configuration);
+});
+
 builder.Services.AddScoped<Gaos.Templates.TemplateService>(provider =>
 {
     Gaos.Dbo.Db db = provider.GetService<Gaos.Dbo.Db>();
@@ -120,12 +127,12 @@ builder.Services.AddScoped<Gaos.Templates.TemplateService>(provider =>
 });
 
 builder.Services.AddScoped<Gaos.Lang.LanguageService>(provider =>
-{ 
+{
     return new Gaos.Lang.LanguageService();
 });
 
 builder.Services.AddScoped<Gaos.Email.EmailService>(provider =>
-{ 
+{
     Gaos.Lang.LanguageService languageService = provider.GetService<Gaos.Lang.LanguageService>();
     Gaos.Templates.TemplateService templateService = provider.GetService<Gaos.Templates.TemplateService>();
     return new Gaos.Email.EmailService(builder.Configuration, languageService, templateService);
@@ -151,16 +158,19 @@ var app = builder.Build();
 app.UseMiddleware<CookieMiddleware>();
 app.UseWebSockets();
 app.UseMiddleware<WebSocketMiddleware>();
-app.UseMiddleware<AuthMiddleware>(); 
+app.UseMiddleware<AuthMiddleware>();
 
 
-app.Map("/", (IConfiguration configuration) => {
+app.Map("/", (IConfiguration configuration) =>
+{
     return Results.Ok("hello!");
 });
 app.MapGroup("/user").GroupUser();
 app.MapGroup("/device").GroupDevice();
 app.MapGroup("/api").GroupApi();
-app.MapGroup("/api/gameData").GroupGameData();
+app.MapGroup("/api1").GroupApi1();
+app.MapGroup("/api/gameData").GameData();
+app.MapGroup("/api/groupData").GroupData();
 app.MapGroup("/api/chatRoom").GroupChatRoom();
 app.MapGroup("/api/friends").GroupFriends();
 app.Run();

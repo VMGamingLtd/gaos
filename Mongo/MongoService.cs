@@ -16,6 +16,7 @@ namespace Gaos.Mongo
         private readonly string DbNameForChat = "gaos"; 
 
         private readonly string CollectionNameForGameData = "GameData"; 
+        private readonly string CollectionNameForGroupGameData = "GroupData"; 
 
 
         public MongoService(IConfiguration configuration)
@@ -78,7 +79,17 @@ namespace Gaos.Mongo
             IMongoCollection<BsonDocument> collection = database.GetCollection<BsonDocument>(CollectionNameForGameData);
 
             var indexKeysDefinition = Builders<BsonDocument>.IndexKeys.Ascending("UserId").Ascending("SlotId");
-            var indexOptions = new CreateIndexOptions { Unique = false, Name = "UserId__SlotId" };
+            var indexOptions = new CreateIndexOptions { Unique = true, Name = "UserId__SlotId" };
+            var indexModel = new CreateIndexModel<BsonDocument>(indexKeysDefinition, indexOptions);
+            await collection.Indexes.CreateOneAsync(indexModel);
+        }
+
+        private async Task CreateIndexesForGroupGameData(IMongoDatabase database)
+        {
+            IMongoCollection<BsonDocument> collection = database.GetCollection<BsonDocument>(CollectionNameForGroupGameData);
+
+            var indexKeysDefinition = Builders<BsonDocument>.IndexKeys.Ascending("GroupId").Ascending("_version");
+            var indexOptions = new CreateIndexOptions { Unique = true, Name = "GroupId__SlotId__version" };
             var indexModel = new CreateIndexModel<BsonDocument>(indexKeysDefinition, indexOptions);
             await collection.Indexes.CreateOneAsync(indexModel);
         }
@@ -96,6 +107,20 @@ namespace Gaos.Mongo
                 await CreateIndexesForGameData(database);
             }
             IMongoCollection<BsonDocument> collection = database.GetCollection<BsonDocument>(CollectionNameForGameData);
+            return collection;
+        }
+
+        public async Task<IMongoCollection<BsonDocument>> GetCollectionForGroupGameData()
+        {
+            IMongoDatabase database = GetDatabaseForGameData();
+
+            bool isCollectionExists = await IsCollectionExists(database, CollectionNameForGroupGameData);
+
+            if (!isCollectionExists)
+            {
+                await CreateIndexesForGroupGameData(database);
+            }
+            IMongoCollection<BsonDocument> collection = database.GetCollection<BsonDocument>(CollectionNameForGroupGameData);
             return collection;
         }
     }

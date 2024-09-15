@@ -15,5 +15,7 @@ namespace Gaos.Dbo.Model
         public Device? Device { get; set; }
         public string? EmailVerificationCode { get; set; }
         public bool? IsEmailVerified { get; set; }
+        public string? Country { get; set; }
+        public string? Language { get; set; }
     }
 }
