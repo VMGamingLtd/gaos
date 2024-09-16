@@ -18,7 +18,7 @@ namespace Gaos.Mongo
         public string? ErrorMessage { get; set; }
 
         public string? Id { get; set; }
-        public int Version { get; set; }
+        public long Version { get; set; }
         public string? GameData { get; set; }
     }
 
@@ -26,6 +26,8 @@ namespace Gaos.Mongo
     {
         public bool? IsError { get; set; }
         public string? ErrorMessage { get; set; }
+        public string? Id { get; set; }
+        public long Version { get; set; }
     }
 
     public class MakeEmptyGameDataResult
@@ -34,7 +36,7 @@ namespace Gaos.Mongo
         public string? ErrorMessage { get; set; }
 
         public string? Id { get; set; }
-        public int Version { get; set; }
+        public long Version { get; set; }
         public BsonDocument? Document { get; set; }
     }
 
@@ -44,7 +46,7 @@ namespace Gaos.Mongo
         public string? ErrorMessage { get; set; }
 
         public string? Id { get; set; }
-        public int Version { get; set; }
+        public long Version { get; set; }
         public BsonDocument? Document { get; set; }
     }
 
@@ -106,7 +108,7 @@ namespace Gaos.Mongo
                 {
                     { "GroupId", new BsonInt32(group.GroupId) },
                     { "SlotId", new BsonInt32(slotId) },
-                    { "_version", new BsonInt32(0)},
+                    { "_version", new BsonInt64(0)},
                     { "GameData", new BsonDocument()}
                 };
                 await collection.InsertOneAsync(document);
@@ -115,7 +117,7 @@ namespace Gaos.Mongo
                     IsError = false,
                     ErrorMessage = "",
                     Id = document.GetValue("_id").ToString(),
-                    Version = document.GetValue("_version").ToInt32(),
+                    Version = document.GetValue("_version").ToInt64(),
                     Document = document
                 };
             }
@@ -140,12 +142,7 @@ namespace Gaos.Mongo
                     Builders<BsonDocument>.Filter.Eq("GroupId", group.GroupId),
                     Builders<BsonDocument>.Filter.Eq("SlotId", slotId)
                 );
-                SortDefinition<BsonDocument> sort = Builders<BsonDocument>.Sort
-                    .Ascending("GroupId")
-                    .Ascending("SlotId")
-                    .Ascending("_version");
                 BsonDocument? document = await collection.Find(filter)
-                    .Sort(sort)
                     .FirstOrDefaultAsync();
                 if (document == null)
                 {
@@ -171,13 +168,14 @@ namespace Gaos.Mongo
                         };
                     }
                 }
+                long versionsCount = await collection.CountDocumentsAsync(filter);
                 return new EnsureGameDataResult
                 {
                     IsError = false,
                     ErrorMessage = "",
                     Id = document.GetValue("_id").ToString(),
-                    Version = document.GetValue("_version").ToInt32(),
-                    Document = document
+                    Version = document.GetValue("_version").ToInt64(),
+                    Document = document,
                 };
             }
             catch (Exception ex)
@@ -191,32 +189,132 @@ namespace Gaos.Mongo
             }
         }
 
-        public async Task<GetGameDataResult> GetGameData(UserService.GetGroupResult group, int slotId = 1)
+        public async Task<GetGameDataResult> GetGameData(UserService.GetGroupResult group, long version = -1, int slotId = 1)
         {
             const string METHOD_NAME = "GetGameData()";
             IMongoCollection<BsonDocument> collection = await MongoService.GetCollectionForGroupGameData();
             try
             {
-                var ensureResult = await EnsureGameData(group, slotId);
-                if (ensureResult.IsError == true)
+                // test if group data exists
+                FilterDefinition<BsonDocument> filter = Builders<BsonDocument>.Filter.And(
+                    Builders<BsonDocument>.Filter.Eq("GroupId", group.GroupId),
+                    Builders<BsonDocument>.Filter.Eq("SlotId", slotId)
+                );
+                BsonDocument? document = await collection.Find(filter)
+                    .FirstOrDefaultAsync();
+                if (document == null)
                 {
-                    Log.Error($"{CLASS_NAME}:{METHOD_NAME} error ensuring group data exists");
-                    return new GetGameDataResult
+                    var result = await MakeEmptyGameData(group, slotId);
+                    if (result.IsError == true)
                     {
-                        IsError = true,
-                        ErrorMessage = ensureResult.ErrorMessage
-                    };
+                        Log.Error($"{CLASS_NAME}:{METHOD_NAME} error making empty game data");
+                        return new GetGameDataResult
+                        {
+                            IsError = true,
+                            ErrorMessage = "internal error"
+                        };
+                    }
+                    else
+                    {
+                        if (version > -1)
+                        {
+                            if (result.Version != version)
+                            {
+                                return new GetGameDataResult
+                                {
+                                    IsError = true,
+                                    ErrorMessage = "version not found"
+                                };
+                            }
+                            else
+                            {
+                                return new GetGameDataResult
+                                {
+                                    IsError = false,
+                                    ErrorMessage = "",
+                                    Id = result.Id,
+                                    Version = result.Version,
+                                    GameData = result.Document.GetValue("GameData").ToString()
+                                };
+                            }
+                        }
+                        else
+                        {
+                            return new GetGameDataResult
+                            {
+                                IsError = false,
+                                ErrorMessage = "",
+                                Id = result.Id,
+                                Version = result.Version,
+                                GameData = result.Document.GetValue("GameData").ToString()
+                            };
+                        }
+                    }
                 }
+                else
+                {
+                    if (version != -1)
+                    {
+                        // add vesrion to filter
+                        filter = Builders<BsonDocument>.Filter.And(
+                            Builders<BsonDocument>.Filter.Eq("GroupId", group.GroupId),
+                            Builders<BsonDocument>.Filter.Eq("SlotId", slotId),
+                            Builders<BsonDocument>.Filter.Eq("_version", version)
+                        );
+                        BsonDocument? document_ = await collection.Find(filter).FirstOrDefaultAsync();
+                        if (document_ != null)
+                        {
+                            return new GetGameDataResult
+                            {
+                                IsError = false,
+                                ErrorMessage = "",
+                                Id = document_.GetValue("_id").ToString(),
+                                Version = document_.GetValue("_version").ToInt64(),
+                                GameData = document_.GetValue("GameData").ToString()
+                            };
+                        }
+                        else
+                        {
+                            return new GetGameDataResult
+                            {
+                                IsError = true,
+                                ErrorMessage = "version not found"
+                            };
+                        }
+                    }
+                    else
+                    {
+                        filter = Builders<BsonDocument>.Filter.And(
+                            Builders<BsonDocument>.Filter.Eq("GroupId", group.GroupId),
+                            Builders<BsonDocument>.Filter.Eq("SlotId", slotId)
+                        );
 
-                var document = ensureResult.Document;
-                return new GetGameDataResult {
-                    IsError = false,
-                    ErrorMessage = "",
-                    Id = document.GetValue("_id").ToString(),
-                    Version = document.GetValue("_version").ToInt32(),
-                    GameData = document.GetValue("GameData").ToString()
-                };
+                        // add ordering by  _version in case we have multiple such documents
+                        SortDefinition<BsonDocument> sort = Builders<BsonDocument>.Sort.Descending("_version");
+                        // take the last one
+                        BsonDocument? document_ = await collection.Find(filter).Sort(sort).FirstOrDefaultAsync();
+                        if (document_ != null)
+                        {
+                            return new GetGameDataResult
+                            {
+                                IsError = false,
+                                ErrorMessage = "",
+                                Id = document_.GetValue("_id").ToString(),
+                                Version = document_.GetValue("_version").ToInt64(),
+                                GameData = document_.GetValue("GameData").ToString()
+                            };
+                        }
+                        else
+                        {
+                            return new GetGameDataResult
+                            {
+                                IsError = true,
+                                ErrorMessage = "document not found"
+                            };
+                        }
 
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -224,33 +322,61 @@ namespace Gaos.Mongo
                 return new GetGameDataResult
                 {
                     IsError = true,
-                    ErrorMessage = ex.Message
+                    ErrorMessage = "internal error"
                 };
             }
         }
 
-        public async Task<SaveGroupGameDataResult> SaveGroupGameData(UserService.GetGroupResult group, string groupGameDataJson, int version, int slotId = 1)
+        public async Task<SaveGroupGameDataResult> SaveGroupGameData(UserService.GetGroupResult group, string groupGameDataJson, long version, bool isJsonDiff, int slotId = 1)
         {
             const string METHOD_NAME = "SaveGroupGameData()";
             try
             {
                 IMongoCollection<BsonDocument> collection = await MongoService.GetCollectionForGroupGameData();
-                var ensureResult = await EnsureGameData(group, slotId);
-                if (ensureResult.IsError == true)
+
+                // ensure group game data exists
+                FilterDefinition<BsonDocument> filter = Builders<BsonDocument>.Filter.And(
+                    Builders<BsonDocument>.Filter.Eq("GroupId", group.GroupId),
+                    Builders<BsonDocument>.Filter.Eq("SlotId", slotId)
+                );
+                ProjectionDefinition<BsonDocument> projection = Builders<BsonDocument>.Projection.Include("_id");
+                BsonDocument? document = await collection.Find(filter)
+                    .FirstOrDefaultAsync();
+                if (document == null)
                 {
-                    Log.Error($"{CLASS_NAME}:{METHOD_NAME} error ensuring group data exists");
+                    var result = await MakeEmptyGameData(group, slotId);
+                    if (result.IsError == true)
+                    {
+                        Log.Error($"{CLASS_NAME}:{METHOD_NAME} error making empty group game data");
+                        return new SaveGroupGameDataResult
+                        {
+                            IsError = true,
+                            ErrorMessage = "internal error"
+                        };
+                    }
+                }
+
+                // fetch the last version of the group game data
+
+                filter = Builders<BsonDocument>.Filter.And(
+                    Builders<BsonDocument>.Filter.Eq("GroupId", group.GroupId),
+                    Builders<BsonDocument>.Filter.Eq("SlotId", slotId)
+                );
+                SortDefinition<BsonDocument> sort = Builders<BsonDocument>.Sort.Descending("_version");
+                document = await collection.Find(filter).Sort(sort).FirstOrDefaultAsync();
+                if (document == null)
+                {
+                    Log.Error($"{CLASS_NAME}:{METHOD_NAME} error fetching group game data: not found");
                     return new SaveGroupGameDataResult
                     {
                         IsError = true,
-                        ErrorMessage = ensureResult.ErrorMessage
+                        ErrorMessage = "internal error"
                     };
                 }
 
-                var document = ensureResult.Document;
-                int documentVersion = document.GetValue("_version").ToInt32();
-                if (documentVersion != version)
+                if (version != document.GetValue("_version").ToInt64())
                 {
-                    Log.Error($"{CLASS_NAME}:{METHOD_NAME} error: version mismatch");
+                    Log.Error($"{CLASS_NAME}:{METHOD_NAME} error saving group game data: version mismatch");
                     return new SaveGroupGameDataResult
                     {
                         IsError = true,
@@ -258,17 +384,51 @@ namespace Gaos.Mongo
                     };
                 }
 
-                var goupGameDataDoc = BsonDocument.Parse(groupGameDataJson);
-                document.Set("GameData", goupGameDataDoc);
+                // increment the version
+                long _version = version + 1;
 
-                var filter = Builders<BsonDocument>.Filter.Eq("_id", document.GetValue("_id"));
-                await collection.ReplaceOneAsync(filter, document);
+                // compute the new game data
+                BsonDocument gameDataBson;
+                if (isJsonDiff)
+                {
+                    gameDataBson = GameData.AddGameDataDiff(document["GameData"].AsBsonDocument, groupGameDataJson);
+                }
+                else
+                {
+                    gameDataBson = BsonDocument.Parse(groupGameDataJson);
+                }
+
+                // insert new vesion of the group game data
+                BsonDocument newDocument = new BsonDocument
+                {
+                    { "GroupId", new BsonInt32(group.GroupId) },
+                    { "SlotId", new BsonInt32(slotId) },
+                    { "_version", new BsonInt64(_version)},
+                    { "GameData", gameDataBson}
+                };
+                await collection.InsertOneAsync(newDocument);
+
+                // ensurw that we keep anly has 100 version of the group game data
+                filter = Builders<BsonDocument>.Filter.And(
+                    Builders<BsonDocument>.Filter.Eq("GroupId", group.GroupId),
+                    Builders<BsonDocument>.Filter.Eq("SlotId", slotId)
+                );
+                sort = Builders<BsonDocument>.Sort.Descending("_version");
+                var cursor = collection.Find(filter).Sort(sort).Skip(100);
+                await cursor.ForEachAsync(document =>
+                {
+                    collection.DeleteOne(document);
+                });
 
                 return new SaveGroupGameDataResult
                 {
                     IsError = false,
-                    ErrorMessage = ""
+                    ErrorMessage = "",
+                    Id = newDocument.GetValue("_id").ToString(),
+                    Version = _version
                 };
+
+
             }
             catch (Exception ex)
             {

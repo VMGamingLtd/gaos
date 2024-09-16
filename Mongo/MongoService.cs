@@ -88,7 +88,7 @@ namespace Gaos.Mongo
         {
             IMongoCollection<BsonDocument> collection = database.GetCollection<BsonDocument>(CollectionNameForGroupGameData);
 
-            var indexKeysDefinition = Builders<BsonDocument>.IndexKeys.Ascending("GroupId").Ascending("_version");
+            var indexKeysDefinition = Builders<BsonDocument>.IndexKeys.Ascending("GroupId").Ascending("SlotId").Ascending("_version");
             var indexOptions = new CreateIndexOptions { Unique = true, Name = "GroupId__SlotId__version" };
             var indexModel = new CreateIndexModel<BsonDocument>(indexKeysDefinition, indexOptions);
             await collection.Indexes.CreateOneAsync(indexModel);
