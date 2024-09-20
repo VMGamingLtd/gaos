@@ -8,6 +8,8 @@ using MongoDB.Bson;
 using MongoDB.Driver;
 using Gaos.Mongo;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 
 namespace Gaos.Mongo
 {
@@ -34,10 +36,6 @@ namespace Gaos.Mongo
     {
         public bool? IsError { get; set; }
         public string? ErrorMessage { get; set; }
-
-        public string? Id { get; set; }
-        public long Version { get; set; }
-        public BsonDocument? Document { get; set; }
     }
 
     public class EnsureGameDataResult
@@ -59,6 +57,8 @@ namespace Gaos.Mongo
         private readonly IConfiguration configuration;
 
         private Gaos.Dbo.Model.User? User = null;
+
+        private static JsonSerializerSettings jsonDiffSerializerSettings = jsondiff.Difference.GetJsonSerializerSettings();
 
         public GroupData(MongoService mongoService, GameData gameDataService, IConfiguration configuration)
         {
@@ -115,10 +115,7 @@ namespace Gaos.Mongo
                 return new MakeEmptyGameDataResult
                 {
                     IsError = false,
-                    ErrorMessage = "",
-                    Id = document.GetValue("_id").ToString(),
-                    Version = document.GetValue("_version").ToInt64(),
-                    Document = document
+                    ErrorMessage = ""
                 };
             }
             catch (Exception ex)
@@ -132,77 +129,20 @@ namespace Gaos.Mongo
             }
         }
 
-        public async Task<EnsureGameDataResult> EnsureGameData(UserService.GetGroupResult group, int slotId = 1)
-        {
-            const string METHOD_NAME = "EnsureGameData()";
-            IMongoCollection<BsonDocument> collection = await MongoService.GetCollectionForGroupGameData();
-            try
-            {
-                FilterDefinition<BsonDocument> filter = Builders<BsonDocument>.Filter.And(
-                    Builders<BsonDocument>.Filter.Eq("GroupId", group.GroupId),
-                    Builders<BsonDocument>.Filter.Eq("SlotId", slotId)
-                );
-                BsonDocument? document = await collection.Find(filter)
-                    .FirstOrDefaultAsync();
-                if (document == null)
-                {
-                    var result = await MakeEmptyGameData(group, slotId);
-                    if (result.IsError == true)
-                    {
-                        Log.Error($"{CLASS_NAME}:{METHOD_NAME} error making empty game data");
-                        return new EnsureGameDataResult
-                        {
-                            IsError = result.IsError,
-                            ErrorMessage = result.ErrorMessage,
-                        };
-                    }
-                    else
-                    {
-                        return new EnsureGameDataResult
-                        {
-                            IsError = false,
-                            ErrorMessage = "",
-                            Id = result.Id,
-                            Version = result.Version,
-                            Document = result.Document
-                        };
-                    }
-                }
-                long versionsCount = await collection.CountDocumentsAsync(filter);
-                return new EnsureGameDataResult
-                {
-                    IsError = false,
-                    ErrorMessage = "",
-                    Id = document.GetValue("_id").ToString(),
-                    Version = document.GetValue("_version").ToInt64(),
-                    Document = document,
-                };
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex}");
-                return new EnsureGameDataResult
-                {
-                    IsError = true,
-                    ErrorMessage = "internal error"
-                };
-            }
-        }
 
-        public async Task<GetGameDataResult> GetGameData(UserService.GetGroupResult group, long version = -1, int slotId = 1)
+        public async Task<GetGameDataResult> GetGameData(UserService.GetGroupResult group, long version = -1, bool isJsonDiff = false, int slotId = 1)
         {
             const string METHOD_NAME = "GetGameData()";
             IMongoCollection<BsonDocument> collection = await MongoService.GetCollectionForGroupGameData();
             try
             {
-                // test if group data exists
+                // ensure group data exists
                 FilterDefinition<BsonDocument> filter = Builders<BsonDocument>.Filter.And(
                     Builders<BsonDocument>.Filter.Eq("GroupId", group.GroupId),
                     Builders<BsonDocument>.Filter.Eq("SlotId", slotId)
                 );
-                BsonDocument? document = await collection.Find(filter)
-                    .FirstOrDefaultAsync();
-                if (document == null)
+                bool documentExists = await collection.Find(filter).AnyAsync();
+                if (!documentExists)
                 {
                     var result = await MakeEmptyGameData(group, slotId);
                     if (result.IsError == true)
@@ -214,106 +154,116 @@ namespace Gaos.Mongo
                             ErrorMessage = "internal error"
                         };
                     }
-                    else
+                }
+
+                if (version > -1)
+                {
+                    // get document at version
+                    filter = Builders<BsonDocument>.Filter.And(
+                        Builders<BsonDocument>.Filter.Eq("GroupId", group.GroupId),
+                        Builders<BsonDocument>.Filter.Eq("SlotId", slotId),
+                        Builders<BsonDocument>.Filter.Eq("_version", version)
+                    );
+                    BsonDocument documentAtVesrion = await collection.Find(filter).FirstOrDefaultAsync();
+                    if (documentAtVesrion != null)
                     {
-                        if (version > -1)
-                        {
-                            if (result.Version != version)
-                            {
-                                return new GetGameDataResult
-                                {
-                                    IsError = true,
-                                    ErrorMessage = "version not found"
-                                };
-                            }
-                            else
-                            {
-                                return new GetGameDataResult
-                                {
-                                    IsError = false,
-                                    ErrorMessage = "",
-                                    Id = result.Id,
-                                    Version = result.Version,
-                                    GameData = result.Document.GetValue("GameData").ToString()
-                                };
-                            }
-                        }
-                        else
+                        if (!isJsonDiff)
                         {
                             return new GetGameDataResult
                             {
                                 IsError = false,
                                 ErrorMessage = "",
-                                Id = result.Id,
-                                Version = result.Version,
-                                GameData = result.Document.GetValue("GameData").ToString()
+                                Id = documentAtVesrion.GetValue("_id").ToString(),
+                                Version = documentAtVesrion.GetValue("_version").ToInt64(),
+                                GameData = documentAtVesrion.GetValue("GameData").ToString()
                             };
                         }
+                        else
+                        {
+                            // get latest version of the document
+                            filter = Builders<BsonDocument>.Filter.And(
+                                Builders<BsonDocument>.Filter.Eq("GroupId", group.GroupId),
+                                Builders<BsonDocument>.Filter.Eq("SlotId", slotId)
+                            );
+
+                            // add ordering by  _version in case we have multiple such documents
+                            SortDefinition<BsonDocument> sort = Builders<BsonDocument>.Sort.Descending("_version");
+                            // take the last one
+                            BsonDocument documentAtLatest = await collection.Find(filter).Sort(sort).FirstOrDefaultAsync();
+                            if (documentAtLatest == null)
+                            {
+                                Log.Error($"{CLASS_NAME}:{METHOD_NAME} error fetching group game data: latest document not found");
+                                return new GetGameDataResult
+                                {
+                                    IsError = true,
+                                    ErrorMessage = "latest document not found"
+                                };
+                            }
+
+                            string gameDataStrAtVesion = documentAtVesrion.GetValue("GameData").ToString();
+                            string gameDataStrAtLatest = documentAtLatest.GetValue("GameData").ToString();
+
+                            // compute the diff from version to latest
+                            JObject gameDataJoAtVesion = JObject.Parse(gameDataStrAtVesion);
+                            JObject gameDataJoAtLatest = JObject.Parse(gameDataStrAtLatest);
+                            var diff = jsondiff.Difference.CompareValues(gameDataJoAtVesion, gameDataJoAtLatest);
+                            var strDiff = JsonConvert.SerializeObject(diff, jsonDiffSerializerSettings);
+
+                            return new GetGameDataResult
+                            {
+                                IsError = false,
+                                ErrorMessage = "",
+                                Id = documentAtLatest.GetValue("_id").ToString(),
+                                Version = documentAtLatest.GetValue("_version").ToInt64(),
+                                GameData = strDiff
+                            };
+
+
+                        }
+                    }
+                    else
+                    {
+                        Log.Warning($"{CLASS_NAME}:{METHOD_NAME} error fetching group game data: version not found");
+                        return new GetGameDataResult
+                        {
+                            IsError = true,
+                            ErrorMessage = "version not found"
+                        };
                     }
                 }
                 else
                 {
-                    if (version != -1)
+                    // get the latest version of the document
+
+                    filter = Builders<BsonDocument>.Filter.And(
+                        Builders<BsonDocument>.Filter.Eq("GroupId", group.GroupId),
+                        Builders<BsonDocument>.Filter.Eq("SlotId", slotId)
+                    );
+
+                    // add ordering by  _version in case we have multiple such documents
+                    SortDefinition<BsonDocument> sort = Builders<BsonDocument>.Sort.Descending("_version");
+                    // take the last one
+                    BsonDocument? documentLatest = await collection.Find(filter).Sort(sort).FirstOrDefaultAsync();
+                    if (documentLatest != null)
                     {
-                        // add vesrion to filter
-                        filter = Builders<BsonDocument>.Filter.And(
-                            Builders<BsonDocument>.Filter.Eq("GroupId", group.GroupId),
-                            Builders<BsonDocument>.Filter.Eq("SlotId", slotId),
-                            Builders<BsonDocument>.Filter.Eq("_version", version)
-                        );
-                        BsonDocument? document_ = await collection.Find(filter).FirstOrDefaultAsync();
-                        if (document_ != null)
+                        return new GetGameDataResult
                         {
-                            return new GetGameDataResult
-                            {
-                                IsError = false,
-                                ErrorMessage = "",
-                                Id = document_.GetValue("_id").ToString(),
-                                Version = document_.GetValue("_version").ToInt64(),
-                                GameData = document_.GetValue("GameData").ToString()
-                            };
-                        }
-                        else
-                        {
-                            return new GetGameDataResult
-                            {
-                                IsError = true,
-                                ErrorMessage = "version not found"
-                            };
-                        }
+                            IsError = false,
+                            ErrorMessage = "",
+                            Id = documentLatest.GetValue("_id").ToString(),
+                            Version = documentLatest.GetValue("_version").ToInt64(),
+                            GameData = documentLatest.GetValue("GameData").ToString()
+                        };
                     }
                     else
                     {
-                        filter = Builders<BsonDocument>.Filter.And(
-                            Builders<BsonDocument>.Filter.Eq("GroupId", group.GroupId),
-                            Builders<BsonDocument>.Filter.Eq("SlotId", slotId)
-                        );
-
-                        // add ordering by  _version in case we have multiple such documents
-                        SortDefinition<BsonDocument> sort = Builders<BsonDocument>.Sort.Descending("_version");
-                        // take the last one
-                        BsonDocument? document_ = await collection.Find(filter).Sort(sort).FirstOrDefaultAsync();
-                        if (document_ != null)
+                        return new GetGameDataResult
                         {
-                            return new GetGameDataResult
-                            {
-                                IsError = false,
-                                ErrorMessage = "",
-                                Id = document_.GetValue("_id").ToString(),
-                                Version = document_.GetValue("_version").ToInt64(),
-                                GameData = document_.GetValue("GameData").ToString()
-                            };
-                        }
-                        else
-                        {
-                            return new GetGameDataResult
-                            {
-                                IsError = true,
-                                ErrorMessage = "document not found"
-                            };
-                        }
-
+                            IsError = true,
+                            ErrorMessage = "document not found"
+                        };
                     }
+
                 }
             }
             catch (Exception ex)
@@ -339,10 +289,8 @@ namespace Gaos.Mongo
                     Builders<BsonDocument>.Filter.Eq("GroupId", group.GroupId),
                     Builders<BsonDocument>.Filter.Eq("SlotId", slotId)
                 );
-                ProjectionDefinition<BsonDocument> projection = Builders<BsonDocument>.Projection.Include("_id");
-                BsonDocument? document = await collection.Find(filter)
-                    .FirstOrDefaultAsync();
-                if (document == null)
+                bool documentExists = await collection.Find(filter).AnyAsync();
+                if (!documentExists)
                 {
                     var result = await MakeEmptyGameData(group, slotId);
                     if (result.IsError == true)
@@ -363,7 +311,7 @@ namespace Gaos.Mongo
                     Builders<BsonDocument>.Filter.Eq("SlotId", slotId)
                 );
                 SortDefinition<BsonDocument> sort = Builders<BsonDocument>.Sort.Descending("_version");
-                document = await collection.Find(filter).Sort(sort).FirstOrDefaultAsync();
+                BsonDocument  document = await collection.Find(filter).Sort(sort).FirstOrDefaultAsync();
                 if (document == null)
                 {
                     Log.Error($"{CLASS_NAME}:{METHOD_NAME} error fetching group game data: not found");
@@ -376,7 +324,7 @@ namespace Gaos.Mongo
 
                 if (version != document.GetValue("_version").ToInt64())
                 {
-                    Log.Error($"{CLASS_NAME}:{METHOD_NAME} error saving group game data: version mismatch");
+                    Log.Warning($"{CLASS_NAME}:{METHOD_NAME} error saving group game data: version mismatch");
                     return new SaveGroupGameDataResult
                     {
                         IsError = true,

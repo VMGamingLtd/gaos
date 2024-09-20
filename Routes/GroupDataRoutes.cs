@@ -49,7 +49,7 @@ namespace Gaos.Routes
                     {
                         stopwatch.Start();
                     }
-                    GetGameDataResult gameDataResult = await groupDataService.GetGameData(userGroup, request.SlotId);
+                    GetGameDataResult gameDataResult = await groupDataService.GetGameData(userGroup, request.Version, request.SlotId);
                     if (configuration["gao_profiling"] == "true")
                     {
                         stopwatch.Stop();
