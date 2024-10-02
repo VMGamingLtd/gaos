@@ -8,7 +8,7 @@ namespace Gaos.Routes.Model.DeviceJson
     public class DeviceRegisterResponseUserSlot
     {
         public string MongoDocumentId { get; set; }
-        public int MongoDocumentVersion { get; set; }
+        public long MongoDocumentVersion { get; set; }
         public int SlotId { get; set; }
 
         public string UserName { get; set; }

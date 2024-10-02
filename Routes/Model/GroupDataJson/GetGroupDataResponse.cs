@@ -10,7 +10,7 @@ namespace Gaos.Routes.Model.GroupDataJson
         public string? ErrorMessage { get; set; }
 
         public string? Id { get; set; }
-        public int Version { get; set; }
+        public long Version { get; set; }
         public string? GroupDataJson { get; set; }
     }
 }

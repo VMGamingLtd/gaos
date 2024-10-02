@@ -18,7 +18,7 @@ namespace Gaos.Routes
         {
 
             group.MapPost("/getGroupData", async (GetGroupDataGetRequest request, Db db, Gaos.Common.UserService userService, 
-                GroupData gameDataService, IConfiguration configuration) =>
+                GroupData groupDataService, IConfiguration configuration) =>
             {
                 const string METHOD_NAME = "getGroupData()";
                 try
@@ -49,7 +49,7 @@ namespace Gaos.Routes
                     {
                         stopwatch.Start();
                     }
-                    GetGameDataResult gameDataResult = await gameDataService.GetGameData(userGroup, request.SlotId);
+                    GetGameDataResult gameDataResult = await groupDataService.GetGameData(userGroup, request.Version, request.IsGameDataDiff, request.SlotId);
                     if (configuration["gao_profiling"] == "true")
                     {
                         stopwatch.Stop();
@@ -79,7 +79,7 @@ namespace Gaos.Routes
             });
 
             group.MapPost("/saveGroupData", async (SaveGroupDataRequest request, Db db, Gaos.Common.UserService userService, 
-                GroupData gameDataService, IConfiguration configuration) =>
+                GroupData groupDataService, IConfiguration configuration) =>
             {
                 const string METHOD_NAME = "saveGroupData()";
                 try
@@ -109,7 +109,7 @@ namespace Gaos.Routes
                     {
                         stopwatch.Start();
                     }
-                    SaveGroupGameDataResult saveResult = await gameDataService.SaveGroupGameData(userGroup, request.GroupDataJson, request.Version, request.SlotId);
+                    SaveGroupGameDataResult saveResult = await groupDataService.SaveGroupGameData(userGroup, request.GroupDataJson, request.Version, request.IsJsonDiff, request.SlotId);
                     if (configuration["gao_profiling"] == "true")
                     {
                         stopwatch.Stop();
@@ -140,7 +140,7 @@ namespace Gaos.Routes
             });
 
             group.MapPost("/getOwnersData", async (GetOwnersDataRequest request, Db db, Gaos.Common.UserService userService, 
-                GroupData gameDataService, IConfiguration configuration) =>
+                GroupData groupDataService, IConfiguration configuration) =>
             {
                 const string METHOD_NAME = "getOwnersData()";
                 try
@@ -166,7 +166,7 @@ namespace Gaos.Routes
                         return Results.Json(response);
                     }
 
-                    String ownersDataJson = await gameDataService.GetOwnersData(userGroup, request.SlotId);
+                    String ownersDataJson = await groupDataService.GetOwnersData(userGroup, request.SlotId);
 
                     response.IsError = false;
                     response.ErrorMessage = "";

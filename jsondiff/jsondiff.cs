@@ -508,7 +508,7 @@ namespace jsondiff
             return diffs;
         }
 
-        // Compute diff = A - B
+        // Compute diff such that valA + diff = valB
         public static DiffValue CompareValues(JToken valA, JToken valB)
         {
             if (valA.Type != valB.Type)
