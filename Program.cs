@@ -98,7 +98,8 @@ builder.Services.AddScoped<Gaos.Common.UserService>(provider =>
     HttpContext context = provider.GetService<IHttpContextAccessor>()?.HttpContext;
     Gaos.Auth.TokenService tokenService = provider.GetService<Gaos.Auth.TokenService>();
     Gaos.Dbo.Db db = provider.GetService<Gaos.Dbo.Db>();
-    return new Gaos.Common.UserService(context, tokenService, db);
+    MySqlConnection dbConn = provider.GetService<MySqlConnection>();
+    return new Gaos.Common.UserService(context, tokenService, db, dbConn);
 });
 
 builder.Services.AddScoped<Gaos.Mongo.MongoService>(provider =>
@@ -171,6 +172,7 @@ app.MapGroup("/api").GroupApi();
 app.MapGroup("/api1").GroupApi1();
 app.MapGroup("/api/gameData").GameData();
 app.MapGroup("/api/groupData").GroupData();
+app.MapGroup("/api/groupData1").GroupData1();
 app.MapGroup("/api/chatRoom").GroupChatRoom();
 app.MapGroup("/api/friends").GroupFriends();
 app.Run();

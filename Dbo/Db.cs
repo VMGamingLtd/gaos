@@ -33,6 +33,7 @@
         public DbSet<GroupMember> GroupMember => Set<GroupMember>();
         public DbSet<GroupMemberRequest> GroupMemberRequest => Set<GroupMemberRequest>();
         public DbSet<UserInterfaceColors> UserInterfaceColors => Set<UserInterfaceColors>();
+        public DbSet<GroupCredits> GroupCredits => Set<GroupCredits>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -130,6 +131,12 @@
             modelBuilder.Entity<GroupMemberRequest>().HasOne(e => e.Group).WithMany().HasForeignKey(e => e.GroupId);
             modelBuilder.Entity<GroupMemberRequest>().HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
             modelBuilder.Entity<GroupMemberRequest>().HasIndex(e => new { e.GroupId, e.UserId }).IsUnique(true);
+
+            // GroupCredits
+            modelBuilder.Entity<GroupCredits>().HasKey(e => e.Id);
+            modelBuilder.Entity<GroupCredits>().HasOne(e => e.Group).WithMany().HasForeignKey(e => e.GroupId);
+            modelBuilder.Entity<GroupCredits>().HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
+            modelBuilder.Entity<GroupMember>().HasIndex(e => new { e.GroupId, e.UserId }).IsUnique(true);
 
             Gaos.Seed.SeedAll.Seed(modelBuilder, Configuration, Environment);
         }

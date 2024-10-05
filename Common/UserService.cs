@@ -2,6 +2,7 @@
 
 using Gaos.Dbo.Model;
 using Microsoft.EntityFrameworkCore;
+using MySqlConnector;
 using Serilog;
 namespace Gaos.Common
 {
@@ -12,15 +13,18 @@ namespace Gaos.Common
         private Gaos.Auth.TokenService TokenService = null;
         private HttpContext Context = null;
         private Gaos.Dbo.Db Db = null;
+        private MySqlConnection DbConn = null;
 
         private Gaos.Dbo.Model.User? User = null;
         private GetGroupResult getGroupResult = null;
+        private bool isGetGroupResult = false;
 
-        public UserService(HttpContext context, Auth.TokenService tokenService, Gaos.Dbo.Db db)
+        public UserService(HttpContext context, Auth.TokenService tokenService, Gaos.Dbo.Db db, MySqlConnection dbConn)
         {
             TokenService = tokenService;
             Context = context;
             Db = db;
+            DbConn = dbConn;
         }
 
         public Gaos.Model.Token.TokenClaims GetTokenClaims()
@@ -172,7 +176,7 @@ namespace Gaos.Common
         // Returns either group of which user is owner or group of which user is member or null if user is neither owner nor member of any group.
         // If group does not have any members it is not considered to be a group, user is not considered to be an owner.
 
-        public async Task<GetGroupResult?> GetUserGroup()
+        public async Task<GetGroupResult?> GetUserGroup_old()
         {
             const string METHOD_NAME = "GetGroup()";
 
@@ -265,6 +269,147 @@ namespace Gaos.Common
                         return null;
                     }
                 }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, $"{CLASS_NAME}:{METHOD_NAME} {e.Message}");
+                throw new Exception($"getting user group failed");
+            }
+        }
+
+        // Returns either group of which user is owner or group of which user is member or null if user is neither owner nor member of any group.
+        // If group does not have any members it is not considered to be a group, user is not considered to be an owner.
+
+        public record GetUserGroupResult(int memberGroupId, string memberGroupName, int memberGroupOwnerId, string memberGroupOwnerName, int ownedGroupId, string ownedGroupName); 
+        public async Task<GetGroupResult?> GetUserGroup()
+        {
+            const string METHOD_NAME = "GetUserGroup1()";
+            const string sqlQuery =
+$@"
+SELECT 
+    g.Id AS memberGroupId,
+    g.Name AS memberGroupName,
+    g.OwnerId AS memberGroupOwnerId
+    u.Name AS memberGroupOwnerName
+    NULL AS ownedGroupId
+    NULL AS ownedGroupName
+FROM groupp g
+JOIN groupmember gm ON g.Id = gm.GroupId
+JOIN user u ON g.OwnerId = u.Id
+WHERE gm.UserId = @userId
+
+UNION ALL
+
+SELECT 
+    NULL AS memberGroupId,
+    NULL AS memberGroupName,
+    NULL AS memberGroupOwnerId
+    MULL AS memberGroupOwnerName
+    g.Id AS ownedGroupId
+    g.Name AS ownedGroupName
+FROM groupp g
+WHERE g.OwnerId = @userId
+    AND EXISTS (SELECT 1 FROM groupmember gm WHERE gm.GroupId = g.Id)
+";
+            try
+            {
+                if (this.isGetGroupResult)
+                {
+                    return this.getGroupResult;
+                }
+
+                var user = GetUser();
+                if (user == null)
+                {
+                    Log.Error($"{CLASS_NAME}:{METHOD_NAME} user not logged in");
+                    throw new Exception("user not logged int");
+                }
+
+                await DbConn.OpenAsync();
+                await using var command = DbConn.CreateCommand();
+                command.CommandText = sqlQuery;
+                command.Parameters.AddWithValue("@userId", user.Id);
+                using var reader = await command.ExecuteReaderAsync();
+
+                List<GetUserGroupResult> results = new List<GetUserGroupResult>();
+                while (await reader.ReadAsync())
+                {
+                    int memberGroupId;
+                    string memberGroupName;
+                    int memberGroupOwnerId;
+                    string memberGroupOwnerName;
+                    if (reader.IsDBNull(0))
+                    {
+                        memberGroupId = -1;
+                        memberGroupName = null;
+                        memberGroupOwnerId = -1;
+                        memberGroupOwnerName = null;
+                    }
+                    else
+                    {
+                        memberGroupId = reader.GetInt32(0);
+                        memberGroupName = reader.GetString(1);
+                        memberGroupOwnerId = reader.GetInt32(2);
+                        memberGroupOwnerName = reader.GetString(3);
+                    }
+                    int ownedGroupId;
+                    string ownedGroupName;
+                    if (reader.IsDBNull(4))
+                    {
+                        ownedGroupId = -1;
+                        ownedGroupName = null;
+                    }
+                    else
+                    {
+                        ownedGroupId = reader.GetInt32(5);
+                        ownedGroupName = reader.GetString(6);
+                    }
+                    GetUserGroupResult result = new GetUserGroupResult(
+                        memberGroupId, memberGroupName, memberGroupOwnerId, memberGroupOwnerName, ownedGroupId, ownedGroupName
+                    );
+                    results.Add(result);
+                }
+                reader.Close();
+
+
+                // iterate over results and return GetGroupResult
+                foreach (var result in results)
+                {
+                    if (result.memberGroupId != -1)
+                    {
+                        var getGroupResult = new GetGroupResult
+                        {
+                            IsGroupOwner = false,
+                            IsGroupMember = true,
+                            GroupId = result.memberGroupId,
+                            GroupOwnerId = result.memberGroupOwnerId,
+                            GroupOwnerName = result.memberGroupOwnerName
+                        };
+                        this.getGroupResult = getGroupResult;
+                        this.isGetGroupResult = true;
+                        return getGroupResult;
+                    }
+                    else if (result.ownedGroupId != -1)
+                    {
+                        var getGroupResult = new GetGroupResult
+                        {
+                            IsGroupOwner = true,
+                            IsGroupMember = false,
+                            GroupId = result.ownedGroupId,
+                            GroupOwnerId = user.Id,
+                            GroupOwnerName = user.Name
+                        };
+                        this.getGroupResult = getGroupResult;
+                        this.isGetGroupResult = true;
+                        return getGroupResult;
+                    }
+                }
+
+                this.getGroupResult = null;
+                this.isGetGroupResult = true;
+                return null;
+
+
             }
             catch (Exception e)
             {
