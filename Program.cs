@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
 using Serilog;
 
-if (false)
+if (true)
 {
     gaos.Tests.Test.TestAll();
     Console.WriteLine("Press any key to exit program");
@@ -150,6 +150,11 @@ builder.Services.AddScoped<Gaos.UserVerificationCode.UserVerificationCodeService
 builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =>
 {
     options.SerializerOptions.PropertyNamingPolicy = null;
+});
+
+builder.Services.AddHostedService<Gaos.wsrv.WsrConnectionPoolService>(provider =>
+{
+    return new Gaos.wsrv.WsrConnectionPoolService();
 });
 
 

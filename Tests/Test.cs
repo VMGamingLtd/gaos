@@ -96,12 +96,26 @@ namespace gaos.Tests
             Console.WriteLine(resultJson);
         }
 
+        static void TestEncryptionHelper()
+        {
+            string password = "password";
+            string plaintext = "Hello, World!";
+
+            string encrypted = Gaos.Encryption.EncryptionHelper.Encrypt(password, plaintext);
+            Console.WriteLine($"Encrypted: {encrypted}");
+
+            string decrypted = Gaos.Encryption.EncryptionHelper.Decrypt(password, encrypted);
+            Console.WriteLine($"Decrypted: {decrypted}");
+        }
+
+
         public static void TestAll() {
             if (true) {
                 //TestJsonDiff();
-                TestJsonDiff1();
+                //TestJsonDiff1();
                 //TestJsonIsEqual();
                 //TestMergeBug();
+                TestEncryptionHelper();
             }
         }
     }

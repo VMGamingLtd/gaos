@@ -25,18 +25,19 @@ namespace GaoProtobuf.gaos {
       byte[] descriptorData = global::System.Convert.FromBase64String(
           string.Concat(
             "Ch1nYW9zL0dyb3VwQ3JlZGl0c0NoYW5nZS5wcm90bxIQR2FvUHJvdG9idWYu",
-            "Z2FvcyIkChJHcm91cENyZWRpdHNDaGFuZ2USDgoGdXNlcklkGAEgASgDQhOq",
-            "AhBHYW9Qcm90b2J1Zi5nYW9zYgZwcm90bzM="));
+            "Z2FvcyIlChJHcm91cENyZWRpdHNDaGFuZ2USDwoHY3JlZGl0cxgBIAEoBUIT",
+            "qgIQR2FvUHJvdG9idWYuZ2Fvc2IGcHJvdG8z"));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { },
           new pbr::GeneratedClrTypeInfo(null, null, new pbr::GeneratedClrTypeInfo[] {
-            new pbr::GeneratedClrTypeInfo(typeof(global::GaoProtobuf.gaos.GroupCreditsChange), global::GaoProtobuf.gaos.GroupCreditsChange.Parser, new[]{ "UserId" }, null, null, null, null)
+            new pbr::GeneratedClrTypeInfo(typeof(global::GaoProtobuf.gaos.GroupCreditsChange), global::GaoProtobuf.gaos.GroupCreditsChange.Parser, new[]{ "Credits" }, null, null, null, null)
           }));
     }
     #endregion
 
   }
   #region Messages
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class GroupCreditsChange : pb::IMessage<GroupCreditsChange>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -71,7 +72,7 @@ namespace GaoProtobuf.gaos {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public GroupCreditsChange(GroupCreditsChange other) : this() {
-      userId_ = other.userId_;
+      credits_ = other.credits_;
       _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
     }
 
@@ -81,15 +82,15 @@ namespace GaoProtobuf.gaos {
       return new GroupCreditsChange(this);
     }
 
-    /// <summary>Field number for the "userId" field.</summary>
-    public const int UserIdFieldNumber = 1;
-    private long userId_;
+    /// <summary>Field number for the "credits" field.</summary>
+    public const int CreditsFieldNumber = 1;
+    private int credits_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public long UserId {
-      get { return userId_; }
+    public int Credits {
+      get { return credits_; }
       set {
-        userId_ = value;
+        credits_ = value;
       }
     }
 
@@ -108,7 +109,7 @@ namespace GaoProtobuf.gaos {
       if (ReferenceEquals(other, this)) {
         return true;
       }
-      if (UserId != other.UserId) return false;
+      if (Credits != other.Credits) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
 
@@ -116,7 +117,7 @@ namespace GaoProtobuf.gaos {
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public override int GetHashCode() {
       int hash = 1;
-      if (UserId != 0L) hash ^= UserId.GetHashCode();
+      if (Credits != 0) hash ^= Credits.GetHashCode();
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
       }
@@ -135,9 +136,9 @@ namespace GaoProtobuf.gaos {
     #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       output.WriteRawMessage(this);
     #else
-      if (UserId != 0L) {
+      if (Credits != 0) {
         output.WriteRawTag(8);
-        output.WriteInt64(UserId);
+        output.WriteInt32(Credits);
       }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
@@ -149,9 +150,9 @@ namespace GaoProtobuf.gaos {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
-      if (UserId != 0L) {
+      if (Credits != 0) {
         output.WriteRawTag(8);
-        output.WriteInt64(UserId);
+        output.WriteInt32(Credits);
       }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
@@ -163,8 +164,8 @@ namespace GaoProtobuf.gaos {
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public int CalculateSize() {
       int size = 0;
-      if (UserId != 0L) {
-        size += 1 + pb::CodedOutputStream.ComputeInt64Size(UserId);
+      if (Credits != 0) {
+        size += 1 + pb::CodedOutputStream.ComputeInt32Size(Credits);
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -178,8 +179,8 @@ namespace GaoProtobuf.gaos {
       if (other == null) {
         return;
       }
-      if (other.UserId != 0L) {
-        UserId = other.UserId;
+      if (other.Credits != 0) {
+        Credits = other.Credits;
       }
       _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
     }
@@ -192,12 +193,16 @@ namespace GaoProtobuf.gaos {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
           case 8: {
-            UserId = input.ReadInt64();
+            Credits = input.ReadInt32();
             break;
           }
         }
@@ -211,12 +216,16 @@ namespace GaoProtobuf.gaos {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
           case 8: {
-            UserId = input.ReadInt64();
+            Credits = input.ReadInt32();
             break;
           }
         }
