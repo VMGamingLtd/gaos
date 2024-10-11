@@ -11,7 +11,7 @@ using Serilog;
 
 namespace Gaos.wsrv
 {
-    class WsrConnectionPoolService: IHostedService 
+    public class WsrConnectionPoolService: IHostedService 
     {
         public static string CLASS_NAME = typeof(WsrConnectionPoolService).Name;
 
@@ -91,7 +91,7 @@ namespace Gaos.wsrv
             }
         }
 
-        public async Task SendDataAsync(string message, int timeoutMilliseconds = 5000)
+        public async Task SendDataAsync(byte[] message, int timeoutMilliseconds = 5000)
         {
             const string METHOD_NAME = "SendDataAsync()";
             await initSemaphore.WaitAsync();
@@ -107,7 +107,6 @@ namespace Gaos.wsrv
                 initSemaphore.Release();
             }
 
-            byte[] messageBytes = Encoding.UTF8.GetBytes(message);
 
             await semaphore.WaitAsync();
             try
@@ -119,7 +118,7 @@ namespace Gaos.wsrv
                     {
                         using (var networkStream = new NetworkStream(client, ownsSocket: false))
                         {
-                            var sendTask = networkStream.WriteAsync(messageBytes, 0, messageBytes.Length, cts.Token);
+                            var sendTask = networkStream.WriteAsync(message, 0, message.Length, cts.Token);
                             await sendTask;
                         }
 
