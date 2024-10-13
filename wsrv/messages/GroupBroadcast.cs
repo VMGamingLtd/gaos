@@ -7,18 +7,18 @@
     using System.Threading.Tasks;
     using Serilog;
 
-    public class GroupBroadcast
+    public class GroupBroadcastService
     {
-        private static readonly string CLASS_NAME = typeof(GroupBroadcast).Name;
+        private static readonly string CLASS_NAME = typeof(GroupBroadcastService).Name;
 
         private readonly WsrConnectionPoolService _connectionPool;
 
-        public GroupBroadcast(WsrConnectionPoolService connectionPool)
+        public GroupBroadcastService(WsrConnectionPoolService connectionPool)
         {
             _connectionPool = connectionPool;
         }
 
-        public async Task BroadcastCreditsChangeAsync(long fromUserId, long groupId, int credits)
+        public async Task BroadcastCreditsChangeAsync(long fromUserId, long groupId, float credits)
         {
             const string METHOD_NAME = "BroadcastCreditsChangeAsync()";
             try
@@ -45,12 +45,7 @@
                 };
 
                 // Serialize the complete message using WebsocketTransport
-                byte[] messageBytes;
-                using (var stream = new System.IO.MemoryStream())
-                {
-                    WebsocketTransport.SerializeMessage(stream, messageHeader, creditsChange);
-                    messageBytes = stream.ToArray();
-                }
+                byte[] messageBytes = WebsocketTransport.SerializeMessage(messageHeader, creditsChange);
 
                 // Send the data asynchronously using the connection pool
                 await _connectionPool.SendDataAsync(messageBytes);

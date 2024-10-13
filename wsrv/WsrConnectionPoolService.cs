@@ -11,7 +11,7 @@ using Serilog;
 
 namespace Gaos.wsrv
 {
-    public class WsrConnectionPoolService: IHostedService 
+    public class WsrConnectionPoolService : IHostedService
     {
         public static string CLASS_NAME = typeof(WsrConnectionPoolService).Name;
 
@@ -19,17 +19,17 @@ namespace Gaos.wsrv
         private readonly int port;
         private readonly int poolSize;
         private readonly ConcurrentBag<Socket> clientPool;
-        private readonly SemaphoreSlim semaphore;
+        private readonly SemaphoreSlim poolSemaphore;
         private readonly SemaphoreSlim initSemaphore;
         private bool isInitialized;
 
-        public WsrConnectionPoolService(string ipAddress = "127.0.0.1", int port = 5000, int poolSize = 5)
+        public WsrConnectionPoolService(string ipAddress = "127.0.0.1", int port = 3000, int poolSize = 5)
         {
             this.ipAddress = ipAddress;
             this.port = port;
             this.poolSize = poolSize;
             this.clientPool = new ConcurrentBag<Socket>();
-            this.semaphore = new SemaphoreSlim(poolSize);
+            this.poolSemaphore = new SemaphoreSlim(poolSize);
             this.initSemaphore = new SemaphoreSlim(1, 1);
             this.isInitialized = false;
         }
@@ -43,12 +43,14 @@ namespace Gaos.wsrv
                 if (!isInitialized)
                 {
                     // Initialize the client pool
+                    var tasks = new List<Task<bool>>();
                     for (int i = 0; i < poolSize; i++)
                     {
-                        bool success = await CreateAndAddClientAsync();
+                        tasks.Add(CreateAndAddClientAsync());
                     }
+                    await Task.WhenAll(tasks);
                     isInitialized = true;
-                    Log.Information($"{CLASS_NAME}:{METHOD_NAME}: Client pool initialized, current pool size {poolSize}");
+                    Log.Information($"{CLASS_NAME}:{METHOD_NAME}: Client pool initialized, current pool size {clientPool.Count}");
                 }
             }
             finally
@@ -62,7 +64,7 @@ namespace Gaos.wsrv
             await Init();
         }
 
-       public Task StopAsync(CancellationToken cancellationToken)
+        public Task StopAsync(CancellationToken cancellationToken)
         {
             // Clean up resources if needed
             foreach (var client in clientPool)
@@ -75,18 +77,38 @@ namespace Gaos.wsrv
         private async Task<bool> CreateAndAddClientAsync()
         {
             const string METHOD_NAME = "CreateAndAddClientAsync()";
+            const int CONNECTION_TIMEOUT = 5000;
+            Socket client = null;
             try
             {
-                var client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                 var endPoint = new IPEndPoint(IPAddress.Parse(ipAddress), port);
-                await client.ConnectAsync(endPoint);
-                clientPool.Add(client);
-                Log.Information($"{CLASS_NAME}:{METHOD_NAME}: Client connected and added to pool.");
-                return true;
+
+                // Set the connection timeout
+                var connectTask = client.ConnectAsync(endPoint);
+                if (await Task.WhenAny(connectTask, Task.Delay(CONNECTION_TIMEOUT)) == connectTask)
+                {
+                    // Connection successful
+                    await connectTask; // Ensure the task is completed
+                    clientPool.Add(client);
+                    Log.Information($"{CLASS_NAME}:{METHOD_NAME}: Client connected and added to pool, pool size {clientPool.Count}");
+                    return true;
+                }
+                else
+                {
+                    // Connection timed out
+                    Log.Error($"{CLASS_NAME}:{METHOD_NAME}: Connection attempt timed out after {CONNECTION_TIMEOUT} ms, pool size {clientPool.Count}");
+                    client.Close();
+                    return false;
+                }
             }
             catch (Exception ex)
             {
-                Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: client creation failed: {ex.Message}");
+                if (client != null)
+                {
+                    client.Close();
+                }
+                Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: client creation failed, pool size {clientPool.Count}: {ex.Message}");
                 return false;
             }
         }
@@ -108,7 +130,7 @@ namespace Gaos.wsrv
             }
 
 
-            await semaphore.WaitAsync();
+            await poolSemaphore.WaitAsync();
             try
             {
                 if (clientPool.TryTake(out Socket client))
@@ -116,7 +138,7 @@ namespace Gaos.wsrv
                     var cts = new CancellationTokenSource(timeoutMilliseconds);
                     try
                     {
-                        using (var networkStream = new NetworkStream(client, ownsSocket: false))
+                        using (var networkStream = new NetworkStream(client))
                         {
                             var sendTask = networkStream.WriteAsync(message, 0, message.Length, cts.Token);
                             await sendTask;
@@ -146,7 +168,7 @@ namespace Gaos.wsrv
             }
             finally
             {
-                semaphore.Release();
+                poolSemaphore.Release();
             }
         }
 
@@ -157,7 +179,7 @@ namespace Gaos.wsrv
                 while (clientPool.Count < poolSize)
                 {
                     await CreateAndAddClientAsync();
-                    await Task.Delay(10000); 
+                    await Task.Delay(10000);
                 }
             });
         }

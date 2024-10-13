@@ -108,6 +108,17 @@ namespace gaos.Tests
             Console.WriteLine($"Decrypted: {decrypted}");
         }
 
+        static void TestEncryptionHelper_1()
+        {
+            string plaintext = "Hello, World!";
+
+            string encrypted = Gaos.Encryption.EncryptionHelper.Encrypt( plaintext);
+            Console.WriteLine($"Encrypted: {encrypted}");
+
+            string decrypted = Gaos.Encryption.EncryptionHelper.Decrypt( encrypted);
+            Console.WriteLine($"Decrypted: {decrypted}");
+        }
+
 
         public static void TestAll() {
             if (true) {
@@ -116,6 +127,7 @@ namespace gaos.Tests
                 //TestJsonIsEqual();
                 //TestMergeBug();
                 TestEncryptionHelper();
+                TestEncryptionHelper_1();
             }
         }
     }

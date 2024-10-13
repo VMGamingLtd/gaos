@@ -2,7 +2,7 @@
 namespace Gaos.Routes.Model.GroupData1Json
 {
     [System.Serializable]
-    public class AddCeditsRequest
+    public class AddCreditsRequest
     {
         public float Credits { get; set; }
     }

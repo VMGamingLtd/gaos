@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
 using Serilog;
 
-if (true)
+if (false)
 {
     gaos.Tests.Test.TestAll();
     Console.WriteLine("Press any key to exit program");
@@ -31,7 +31,17 @@ if (builder.Configuration["db_connection_string"] == null)
     throw new Exception("missing configuration value: db_connection_string");
 
 }
-var dbConnectionString = builder.Configuration.GetValue<string>("db_connection_string");
+if (builder.Configuration["db_user"] == null)
+{
+    throw new Exception("missing configuration value: db_user");
+
+}
+if (builder.Configuration["db_password"] == null)
+{
+    throw new Exception("missing configuration value: db_password");
+
+}
+
 
 if (builder.Configuration["db_major_version"] == null)
 {
@@ -45,19 +55,23 @@ if (builder.Configuration["db_minor_version"] == null)
 }
 var dbMinorVersion = builder.Configuration.GetValue<int>("db_minor_version");
 
-
 var dbServerVersion = new MariaDbServerVersion(new Version(dbMajorVersion, dbMinorVersion));
 
+var dbConnectionString = builder.Configuration.GetValue<string>("db_connection_string");
+dbConnectionString += $";user={builder.Configuration.GetValue<string>("db_user")}";
+dbConnectionString += $";password={Gaos.Encryption.EncryptionHelper.Decrypt(builder.Configuration.GetValue<string>("db_password"))}";
 
-builder.Services.AddDbContext<Db>(opt =>
-    opt.UseMySql(dbConnectionString, dbServerVersion)
-    //.LogTo(Console.WriteLine, LogLevel.Information)
-    .LogTo(Console.WriteLine, LogLevel.Debug)
-    .EnableSensitiveDataLogging()
-    .EnableDetailedErrors()
+builder.Services.AddDbContext<Db>(opt => {
+
+
+        opt.UseMySql(dbConnectionString, dbServerVersion)
+        .LogTo(Console.WriteLine, LogLevel.Information)
+        //.LogTo(Console.WriteLine, LogLevel.Debug)
+        .EnableSensitiveDataLogging()
+        .EnableDetailedErrors();
+    }
 );
-
-builder.Services.AddMySqlDataSource(builder.Configuration["db_connection_string"]);
+builder.Services.AddMySqlDataSource(dbConnectionString);
 
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
@@ -152,9 +166,17 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =
     options.SerializerOptions.PropertyNamingPolicy = null;
 });
 
+
 builder.Services.AddHostedService<Gaos.wsrv.WsrConnectionPoolService>(provider =>
 {
-    return new Gaos.wsrv.WsrConnectionPoolService();
+    var service = new Gaos.wsrv.WsrConnectionPoolService();
+    return service;
+});
+
+builder.Services.AddScoped<Gaos.wsrv.messages.GroupBroadcastService>(provider =>
+{
+    Gaos.wsrv.WsrConnectionPoolService connectionPool = provider.GetService<Gaos.wsrv.WsrConnectionPoolService>();
+    return new Gaos.wsrv.messages.GroupBroadcastService(connectionPool);
 });
 
 

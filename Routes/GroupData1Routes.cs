@@ -82,8 +82,12 @@ namespace Gaos.Routes
                 }
             });
 
-            group.MapPost("/addMyCredits", async (AddCeditsRequest request, Db db, Gaos.Common.UserService userService,
-                GroupData groupDataService, IConfiguration configuration) =>
+            group.MapPost("/addMyCredits", async (AddCreditsRequest request, 
+                Db db, 
+                Gaos.Common.UserService userService,
+                GroupData groupDataService, 
+                IConfiguration configuration,
+                Gaos.wsrv.messages.GroupBroadcastService groupBroadcastService) =>
             {
                 const string METHOD_NAME = "addMyCredits()";
                 using (var transaction = db.Database.BeginTransaction())
@@ -134,6 +138,9 @@ namespace Gaos.Routes
                             };
                             db.GroupCredits.Add(groupCredits);
                             await db.SaveChangesAsync();
+
+                            // Broadcast the new credits to the group
+                            await groupBroadcastService.BroadcastCreditsChangeAsync(user.Id, groupId, request.Credits);
                         }
                         else
                         {

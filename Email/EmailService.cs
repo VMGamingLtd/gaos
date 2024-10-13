@@ -21,6 +21,17 @@ namespace Gaos.Email
         private LanguageService LanguageService;
         private TemplateService TemplateService;
 
+        private string emailSmtpServer;
+        private string emailSmtpServerPort;
+        private string emailSmtpUser;
+        private string emailSmtpPassword;
+
+        private string domainName;
+        private string domainNamePrefix;
+
+        private string emailInfoUserFullName;
+        private string emailInfoUserEmail;
+
         public EmailService(IConfiguration configuration, LanguageService languageService, TemplateService templateService)
         {
             const string METHOD_NAME = "EmailService";
@@ -34,42 +45,51 @@ namespace Gaos.Email
                 Log.Error($"{CLASS_NAME}:{METHOD_NAME}: missing configuration value: email_smtp_server");
                 throw new Exception("missing configuration value: email_smtp_server");
             }
+            emailSmtpServer = Configuration["email_smtp_server"];
             if (Configuration["email_smtp_server_port"] == null)
             {
                 Log.Error($"{CLASS_NAME}:{METHOD_NAME}: missing configuration value: email_smtp_server_port");
                 throw new Exception("missing configuration value: email_smtp_server_port");
             }
+            emailSmtpServerPort = Configuration["email_smtp_server_port"];
             if (Configuration["email_smtp_user"] == null)
             {
                 Log.Error($"{CLASS_NAME}:{METHOD_NAME}: missing configuration value: email_smtp_user");
                 throw new Exception("missing configuration value: email_smtp_user");
             }
+            emailSmtpUser = Configuration["email_smtp_user"];
             if (Configuration["email_smtp_password"] == null)
             {
                 Log.Error($"{CLASS_NAME}:{METHOD_NAME}: missing configuration value: email_smtp_password");
                 throw new Exception("missing configuration value: email_smtp_password");
             }
+            emailSmtpPassword = Configuration["email_smtp_password"];
+            emailSmtpPassword = Gaos.Encryption.EncryptionHelper.Decrypt(emailSmtpPassword);
 
             if (Configuration["domain_name"] == null)
             {
                 Log.Error($"{CLASS_NAME}:{METHOD_NAME}: missing configuration value: domain_name");
                 throw new Exception("missing configuration value: domain_name");
             }
+            domainName = Configuration["domain_name"];
             if (Configuration["domain_name_prefix"] == null)
             {
                 Log.Error($"{CLASS_NAME}:{METHOD_NAME}: missing configuration value: domain_name_prefix");
                 throw new Exception("missing configuration value: domain_name_prefix");
             }
+            domainNamePrefix = Configuration["domain_name_prefix"];
             if (Configuration["email_info_user_full_name"] == null)
             {
                 Log.Error($"{CLASS_NAME}:{METHOD_NAME}: missing configuration value: email_info_user_full_name");
                 throw new Exception("missing configuration value: email_info_user_full_name");
             }
+            emailInfoUserFullName = Configuration["email_info_user_full_name"];
             if (Configuration["email_info_user_email"] == null)
             {
                 Log.Error($"{CLASS_NAME}:{METHOD_NAME}: missing configuration value: email_info_user_email");
                 throw new Exception("missing configuration value: email_info_user_email");
             }
+            emailInfoUserEmail = Configuration["email_info_user_email"];
 
         }
 
@@ -94,7 +114,7 @@ namespace Gaos.Email
             {
 
                 var message = new MimeMessage();
-                message.From.Add(new MailboxAddress(Configuration["email_info_user_full_name"], Configuration["email_info_user_email"]));
+                message.From.Add(new MailboxAddress(emailInfoUserFullName, emailInfoUserEmail));
                 message.To.Add(new MailboxAddress(String.Empty, to));
                 message.Subject = subject;
                 message.Body = new TextPart(TextFormat.Html) { Text = htmlBody };
@@ -102,8 +122,8 @@ namespace Gaos.Email
                 // send email
                 using (var smtp = getSmtpClient())
                 {
-                    smtp.Connect(Configuration["email_smtp_server"], int.Parse(Configuration["email_smtp_server_port"]), MailKit.Security.SecureSocketOptions.StartTls);
-                    smtp.Authenticate(Configuration["email_smtp_user"], Configuration["email_smtp_password"]);
+                    smtp.Connect(emailSmtpServer, int.Parse(emailSmtpServerPort), MailKit.Security.SecureSocketOptions.StartTls);
+                    smtp.Authenticate(emailSmtpUser, emailSmtpPassword);
                     smtp.Send(message);
                     smtp.Disconnect(true);
                 }
@@ -128,7 +148,7 @@ namespace Gaos.Email
 
             try
             {
-                string domain = $"{Configuration["domain_name_prefix"]}.{Configuration["domain_name"]}";
+                string domain = $"{domainNamePrefix}.{domainName}";
                 string verifyEmailUrl = $"https://{domain}/verifyEmail.html?code={verificationCode}";
 
                 string subject;

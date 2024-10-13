@@ -59,8 +59,8 @@ namespace Gaos.Auth
                 throw new Exception("missing configuration value: key_store_password");
             }
             string keyStorePassword = Configuration.GetValue<string>("key_store_password");
+            string keysStorePasswordDecrypted = Gaos.Encryption.EncryptionHelper.Decrypt(keyStorePassword);
             return keyStorePassword; 
-
         }
 
         private string GenerateJWT(RSA privateKey, string username, int userId, int deviceId, long validitySeconds, Gaos.Model.Token.UserType userType)  

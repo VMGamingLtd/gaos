@@ -25,7 +25,7 @@ namespace GaoProtobuf.gaos {
       byte[] descriptorData = global::System.Convert.FromBase64String(
           string.Concat(
             "Ch1nYW9zL0dyb3VwQ3JlZGl0c0NoYW5nZS5wcm90bxIQR2FvUHJvdG9idWYu",
-            "Z2FvcyIlChJHcm91cENyZWRpdHNDaGFuZ2USDwoHY3JlZGl0cxgBIAEoBUIT",
+            "Z2FvcyIlChJHcm91cENyZWRpdHNDaGFuZ2USDwoHY3JlZGl0cxgBIAEoAkIT",
             "qgIQR2FvUHJvdG9idWYuZ2Fvc2IGcHJvdG8z"));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { },
@@ -84,10 +84,10 @@ namespace GaoProtobuf.gaos {
 
     /// <summary>Field number for the "credits" field.</summary>
     public const int CreditsFieldNumber = 1;
-    private int credits_;
+    private float credits_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public int Credits {
+    public float Credits {
       get { return credits_; }
       set {
         credits_ = value;
@@ -109,7 +109,7 @@ namespace GaoProtobuf.gaos {
       if (ReferenceEquals(other, this)) {
         return true;
       }
-      if (Credits != other.Credits) return false;
+      if (!pbc::ProtobufEqualityComparers.BitwiseSingleEqualityComparer.Equals(Credits, other.Credits)) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
 
@@ -117,7 +117,7 @@ namespace GaoProtobuf.gaos {
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public override int GetHashCode() {
       int hash = 1;
-      if (Credits != 0) hash ^= Credits.GetHashCode();
+      if (Credits != 0F) hash ^= pbc::ProtobufEqualityComparers.BitwiseSingleEqualityComparer.GetHashCode(Credits);
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
       }
@@ -136,9 +136,9 @@ namespace GaoProtobuf.gaos {
     #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       output.WriteRawMessage(this);
     #else
-      if (Credits != 0) {
-        output.WriteRawTag(8);
-        output.WriteInt32(Credits);
+      if (Credits != 0F) {
+        output.WriteRawTag(13);
+        output.WriteFloat(Credits);
       }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
@@ -150,9 +150,9 @@ namespace GaoProtobuf.gaos {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
-      if (Credits != 0) {
-        output.WriteRawTag(8);
-        output.WriteInt32(Credits);
+      if (Credits != 0F) {
+        output.WriteRawTag(13);
+        output.WriteFloat(Credits);
       }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
@@ -164,8 +164,8 @@ namespace GaoProtobuf.gaos {
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public int CalculateSize() {
       int size = 0;
-      if (Credits != 0) {
-        size += 1 + pb::CodedOutputStream.ComputeInt32Size(Credits);
+      if (Credits != 0F) {
+        size += 1 + 4;
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -179,7 +179,7 @@ namespace GaoProtobuf.gaos {
       if (other == null) {
         return;
       }
-      if (other.Credits != 0) {
+      if (other.Credits != 0F) {
         Credits = other.Credits;
       }
       _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
@@ -201,8 +201,8 @@ namespace GaoProtobuf.gaos {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
-          case 8: {
-            Credits = input.ReadInt32();
+          case 13: {
+            Credits = input.ReadFloat();
             break;
           }
         }
@@ -224,8 +224,8 @@ namespace GaoProtobuf.gaos {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
-          case 8: {
-            Credits = input.ReadInt32();
+          case 13: {
+            Credits = input.ReadFloat();
             break;
           }
         }
