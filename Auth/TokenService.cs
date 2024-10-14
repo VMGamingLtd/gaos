@@ -32,6 +32,8 @@ namespace Gaos.Auth
         private static RSA? privateKey = null;
         private static RSA? publicKey = null;
         private IConfiguration Configuration;
+        private string pkcs12KeyStoreFilePath;
+        private string keyStorePassword;
 
         private Db db;
 
@@ -39,28 +41,30 @@ namespace Gaos.Auth
         {
             this.Configuration = configuration;
             this.db = db;
-        }
 
-        private string GetPkcs12KeyStoreFilePath()
-        {
             if (Configuration["pkcs12_key_store_file_path"] == null)
             {
                 throw new Exception("missing configuration value: pkcs12_key_store_file_path");
             }
-            string pkcs12KeyStoreFilePath = Configuration.GetValue<string>("pkcs12_key_store_file_path");
-            return pkcs12KeyStoreFilePath;   
+            this.pkcs12KeyStoreFilePath = Configuration.GetValue<string>("pkcs12_key_store_file_path");
 
+            if (Configuration["pkcs12_key_store_file_path"] == null)
+            {
+                throw new Exception("missing configuration value: pkcs12_key_store_file_path");
+            }
+            string keyStorePasswordEncrypted = Configuration.GetValue<string>("key_store_password");
+            this.keyStorePassword = Gaos.Encryption.EncryptionHelper.Decrypt(keyStorePasswordEncrypted);
+
+        }
+
+        private string GetPkcs12KeyStoreFilePath()
+        {
+            return pkcs12KeyStoreFilePath;
         }
 
         private string GetKeyStorePassword()
         {
-            if (Configuration["key_store_password"] == null)
-            {
-                throw new Exception("missing configuration value: key_store_password");
-            }
-            string keyStorePassword = Configuration.GetValue<string>("key_store_password");
-            string keysStorePasswordDecrypted = Gaos.Encryption.EncryptionHelper.Decrypt(keyStorePassword);
-            return keyStorePassword; 
+            return this.keyStorePassword;
         }
 
         private string GenerateJWT(RSA privateKey, string username, int userId, int deviceId, long validitySeconds, Gaos.Model.Token.UserType userType)  

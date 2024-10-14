@@ -280,32 +280,25 @@ namespace Gaos.Common
         // Returns either group of which user is owner or group of which user is member or null if user is neither owner nor member of any group.
         // If group does not have any members it is not considered to be a group, user is not considered to be an owner.
 
-        public record GetUserGroupResult(int memberGroupId, string memberGroupName, int memberGroupOwnerId, string memberGroupOwnerName, int ownedGroupId, string ownedGroupName); 
+        //public record GetUserGroupResult(int memberGroupId, string memberGroupName, int memberGroupOwnerId, string memberGroupOwnerName, int ownedGroupId, string ownedGroupName); 
         public async Task<GetGroupResult?> GetUserGroup()
         {
             const string METHOD_NAME = "GetUserGroup1()";
-            const string sqlQuery =
+            const string sqlQueryMember =
 $@"
 SELECT 
     g.Id AS memberGroupId,
-    g.Name AS memberGroupName,
-    g.OwnerId AS memberGroupOwnerId
+    g.OwnerId AS memberGroupOwnerId,
     u.Name AS memberGroupOwnerName
-    NULL AS ownedGroupId
-    NULL AS ownedGroupName
 FROM groupp g
 JOIN groupmember gm ON g.Id = gm.GroupId
 JOIN user u ON g.OwnerId = u.Id
 WHERE gm.UserId = @userId
-
-UNION ALL
-
+";
+            const string sqlQueryOwner =
+$@"
 SELECT 
-    NULL AS memberGroupId,
-    NULL AS memberGroupName,
-    NULL AS memberGroupOwnerId
-    MULL AS memberGroupOwnerName
-    g.Id AS ownedGroupId
+    g.Id AS ownedGroupId,
     g.Name AS ownedGroupName
 FROM groupp g
 WHERE g.OwnerId = @userId
@@ -325,88 +318,70 @@ WHERE g.OwnerId = @userId
                     throw new Exception("user not logged int");
                 }
 
+                // first try if user is a member of a group
+
                 await DbConn.OpenAsync();
-                await using var command = DbConn.CreateCommand();
-                command.CommandText = sqlQuery;
-                command.Parameters.AddWithValue("@userId", user.Id);
-                using var reader = await command.ExecuteReaderAsync();
 
-                List<GetUserGroupResult> results = new List<GetUserGroupResult>();
-                while (await reader.ReadAsync())
+                using (var command = DbConn.CreateCommand())
                 {
-                    int memberGroupId;
-                    string memberGroupName;
-                    int memberGroupOwnerId;
-                    string memberGroupOwnerName;
-                    if (reader.IsDBNull(0))
-                    {
-                        memberGroupId = -1;
-                        memberGroupName = null;
-                        memberGroupOwnerId = -1;
-                        memberGroupOwnerName = null;
-                    }
-                    else
-                    {
-                        memberGroupId = reader.GetInt32(0);
-                        memberGroupName = reader.GetString(1);
-                        memberGroupOwnerId = reader.GetInt32(2);
-                        memberGroupOwnerName = reader.GetString(3);
-                    }
-                    int ownedGroupId;
-                    string ownedGroupName;
-                    if (reader.IsDBNull(4))
-                    {
-                        ownedGroupId = -1;
-                        ownedGroupName = null;
-                    }
-                    else
-                    {
-                        ownedGroupId = reader.GetInt32(5);
-                        ownedGroupName = reader.GetString(6);
-                    }
-                    GetUserGroupResult result = new GetUserGroupResult(
-                        memberGroupId, memberGroupName, memberGroupOwnerId, memberGroupOwnerName, ownedGroupId, ownedGroupName
-                    );
-                    results.Add(result);
-                }
-                reader.Close();
+                    command.CommandText = sqlQueryMember;
+                    command.Parameters.AddWithValue("@userId", user.Id);
+                    using var reader = await command.ExecuteReaderAsync();
 
-
-                // iterate over results and return GetGroupResult
-                foreach (var result in results)
-                {
-                    if (result.memberGroupId != -1)
+                    bool isRow = await reader.ReadAsync();
+                    if (isRow)
                     {
+                        int memberGroupId;
+                        string memberGroupName;
+                        int memberGroupOwnerId;
+                        string memberGroupOwnerName;
+                        {
+                            memberGroupId = reader.GetInt32(0);
+                            memberGroupOwnerId = reader.GetInt32(1);
+                            memberGroupOwnerName = reader.GetString(2);
+                        }
                         var getGroupResult = new GetGroupResult
                         {
                             IsGroupOwner = false,
                             IsGroupMember = true,
-                            GroupId = result.memberGroupId,
-                            GroupOwnerId = result.memberGroupOwnerId,
-                            GroupOwnerName = result.memberGroupOwnerName
+                            GroupId = memberGroupId,
+                            GroupOwnerId = memberGroupOwnerId,
+                            GroupOwnerName = memberGroupOwnerName
                         };
                         this.getGroupResult = getGroupResult;
                         this.isGetGroupResult = true;
-                        return getGroupResult;
-                    }
-                    else if (result.ownedGroupId != -1)
-                    {
-                        var getGroupResult = new GetGroupResult
-                        {
-                            IsGroupOwner = true,
-                            IsGroupMember = false,
-                            GroupId = result.ownedGroupId,
-                            GroupOwnerId = user.Id,
-                            GroupOwnerName = user.Name
-                        };
-                        this.getGroupResult = getGroupResult;
-                        this.isGetGroupResult = true;
+                        reader.Close();
                         return getGroupResult;
                     }
                 }
 
-                this.getGroupResult = null;
-                this.isGetGroupResult = true;
+                using (var command = DbConn.CreateCommand())
+                {
+                    command.CommandText = sqlQueryOwner;
+                    command.Parameters.AddWithValue("@userId", user.Id);
+                    using var reader = await command.ExecuteReaderAsync();
+
+                    bool isRow = await reader.ReadAsync();
+                    if (isRow)
+                    {
+                        int ownedGroupId = reader.GetInt32(0);
+                        string ownedGroupName = reader.GetString(1); 
+                        var getGroupResult = new GetGroupResult
+                        {
+                            IsGroupOwner = true,
+                            IsGroupMember = false,
+                            GroupId = ownedGroupId,
+                            GroupOwnerId = user.Id,
+                            GroupOwnerName = ownedGroupName
+                        };
+                        this.getGroupResult = getGroupResult;
+                        this.isGetGroupResult = true;
+                        reader.Close();
+                        return getGroupResult;
+                    }
+                }
+
+
                 return null;
 
 
