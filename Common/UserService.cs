@@ -13,18 +13,18 @@ namespace Gaos.Common
         private Gaos.Auth.TokenService TokenService = null;
         private HttpContext Context = null;
         private Gaos.Dbo.Db Db = null;
-        private MySqlConnection DbConn = null;
+        private MySqlDataSource DataSource = null;
 
         private Gaos.Dbo.Model.User? User = null;
         private GetGroupResult getGroupResult = null;
         private bool isGetGroupResult = false;
 
-        public UserService(HttpContext context, Auth.TokenService tokenService, Gaos.Dbo.Db db, MySqlConnection dbConn)
+        public UserService(HttpContext context, Auth.TokenService tokenService, Gaos.Dbo.Db db, MySqlDataSource dataSource)
         {
             TokenService = tokenService;
             Context = context;
             Db = db;
-            DbConn = dbConn;
+            DataSource = dataSource;
         }
 
         public Gaos.Model.Token.TokenClaims GetTokenClaims()
@@ -280,7 +280,6 @@ namespace Gaos.Common
         // Returns either group of which user is owner or group of which user is member or null if user is neither owner nor member of any group.
         // If group does not have any members it is not considered to be a group, user is not considered to be an owner.
 
-        //public record GetUserGroupResult(int memberGroupId, string memberGroupName, int memberGroupOwnerId, string memberGroupOwnerName, int ownedGroupId, string ownedGroupName); 
         public async Task<GetGroupResult?> GetUserGroup()
         {
             const string METHOD_NAME = "GetUserGroup1()";
@@ -320,9 +319,10 @@ WHERE g.OwnerId = @userId
 
                 // first try if user is a member of a group
 
-                await DbConn.OpenAsync();
+                //await DbConn.OpenAsync();
+                using var connection = await DataSource.OpenConnectionAsync();
 
-                using (var command = DbConn.CreateCommand())
+                using (var command = connection.CreateCommand())
                 {
                     command.CommandText = sqlQueryMember;
                     command.Parameters.AddWithValue("@userId", user.Id);
@@ -355,7 +355,7 @@ WHERE g.OwnerId = @userId
                     }
                 }
 
-                using (var command = DbConn.CreateCommand())
+                using (var command = connection.CreateCommand())
                 {
                     command.CommandText = sqlQueryOwner;
                     command.Parameters.AddWithValue("@userId", user.Id);
