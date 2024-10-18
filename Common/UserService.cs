@@ -1,4 +1,4 @@
-﻿#pragma warning disable 8625, 8603, 8629, 8604
+﻿#pragma warning disable 8625, 8603, 8629, 8604, 8618
 
 using Gaos.Dbo.Model;
 using Microsoft.EntityFrameworkCore;

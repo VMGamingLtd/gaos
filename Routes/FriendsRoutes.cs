@@ -416,7 +416,6 @@ where
 
 
                             members = new GroupMembersListUser[groupMembers.Length];
-                            // add other members to the list
                             for (int i = 0; i < groupMembers.Length; i++)
                             {
                                 members[i] = new GroupMembersListUser
