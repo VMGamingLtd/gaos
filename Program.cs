@@ -114,7 +114,7 @@ builder.Services.AddScoped<Gaos.Common.UserService>(provider =>
     Gaos.Dbo.Db db = provider.GetService<Gaos.Dbo.Db>();
     MySqlConnection dbConn = provider.GetService<MySqlConnection>();
     MySqlDataSource dataSource = provider.GetService<MySqlDataSource>();
-    return new Gaos.Common.UserService(context, tokenService, db, dbConn, dataSource);
+    return new Gaos.Common.UserService(context, tokenService, db, dataSource);
 });
 
 builder.Services.AddScoped<Gaos.Mongo.MongoService>(provider =>

@@ -37,7 +37,7 @@ namespace Gaos.Routes
 
         public record GetUsersForFriendsSearchResult(int UserId, string UserName, bool IsFriend, bool IsFriendRequest); 
 
-        public static async  Task<List<GetUsersForFriendsSearchResult>> GetUsersForFriendsSearch(MySqlConnection dbConn, int userId, int maxCount, string userNamePattern)
+        public static async  Task<List<GetUsersForFriendsSearchResult>> GetUsersForFriendsSearch(MySqlDataSource dataSource, int userId, int maxCount, string userNamePattern)
         {
             const string METHOD_NAME = "GetUsersForFriendsSearch()";
             // Select users and if selected user is already a friend of logged in user (identified by method parameter userId) then  FriendId will be not null and equal to the selected user id. 
@@ -86,8 +86,8 @@ limit  @maxCount
                 {
                     likePattern = $"%{userNamePattern}%";
                 }
-                await dbConn.OpenAsync();
-                await using var command = dbConn.CreateCommand();
+                using var connection = await dataSource.OpenConnectionAsync();
+                await using var command = connection.CreateCommand();
                 command.CommandText = sqlQuery;
                 command.Parameters.AddWithValue("@userId", userId);
                 command.Parameters.AddWithValue("@userNamePattern", $"%{likePattern}%");
@@ -126,7 +126,7 @@ limit  @maxCount
 
 
         public record GetRequestsForFriendRequestSearchResult(int GroupId, int GroupOwnerId, string GroupOwnerName, int TotalCount); 
-        public static async  Task<List<GetRequestsForFriendRequestSearchResult>> GetRequestsForFriendRequestSearch(MySqlConnection dbConn, 
+        public static async  Task<List<GetRequestsForFriendRequestSearchResult>> GetRequestsForFriendRequestSearch(MySqlDataSource dataSource, 
                                                                                                                     int userId, string ownerNamePattern, 
                                                                                                                     int maxCount, bool isCountOnly)
         {
@@ -190,8 +190,8 @@ where
 
             try
             {
-                await dbConn.OpenAsync();
-                await using var command = dbConn.CreateCommand();
+                using var connection = await dataSource.OpenConnectionAsync();
+                await using var command = connection.CreateCommand();
                 command.CommandText = sqlQuery;
                 command.Parameters.AddWithValue("@userId", userId);
                 if (ownerNamePattern != null)
@@ -294,7 +294,7 @@ where
                 }
             });
 
-            group.MapPost("/getUsersList", async (GetUsersListRequest getUsersListRequest, Db db, MySqlConnection dbConn, Gaos.Common.UserService userService) =>
+            group.MapPost("/getUsersList", async (GetUsersListRequest getUsersListRequest, Db db, MySqlDataSource dataSource, Gaos.Common.UserService userService) =>
             {
                 const string METHOD_NAME = "friends/getUsersList";
                 try
@@ -324,7 +324,7 @@ where
                     }
 
                     UsersListUser[] responseUsers;
-                    var users = await GetUsersForFriendsSearch(dbConn, userId, getUsersListRequest.MaxCount, getUsersListRequest.FilterUserName);
+                    var users = await GetUsersForFriendsSearch(dataSource, userId, getUsersListRequest.MaxCount, getUsersListRequest.FilterUserName);
                     responseUsers = new UsersListUser[users.Count];
                     for (int i = 0; i < users.Count; i++)
                     {
@@ -365,7 +365,7 @@ where
 
 
 
-            group.MapPost("/getMyFriends", async (GetMyFriendsRequest getMyFriendsRequest, Db db, MySqlConnection dbConn, Gaos.Common.UserService userService) =>
+            group.MapPost("/getMyFriends", async (GetMyFriendsRequest getMyFriendsRequest, Db db, Gaos.Common.UserService userService) =>
             {
                 const string METHOD_NAME = "friends/getMyFriends";
         
@@ -509,9 +509,9 @@ where
                             .Where(x => x.OwnerId == userId)
                             .FirstOrDefaultAsync();
 
-                        // If logged in user is not Groupp owner, then create a Groupp for him
                         if (group == null)
                         {
+                            // If logged in user is not Groupp owner, then create an empty Groupp for him
                             var _group = new Groupp
                             {
                                 Name = userService.GetUser().Name + "'s Groupp",
@@ -525,15 +525,31 @@ where
                             group = await db.Groupp
                                 .Where(x => x.OwnerId == userId)
                                 .FirstAsync();
+
                         }
 
-                        // Check if friend is group owner
+                        // If logged in user is already a member of some group, he cannot start his own group.
+                        // Check if logged in user is already a member of some group.
+                        bool userIsGroupMember = await db.GroupMember
+                            .AnyAsync(x => x.UserId == userId);
+                        if (userIsGroupMember)
+                        {
+                            Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: logged in user is already a member of some group, userId: {userId}");
+                            response = new AddFriendResponse
+                            {
+                                IsError = true,
+                                ErrorMessage = "logged in user is already a member of some group, he cannot has his own group",
+                            };
+                            return Results.Json(response);
+                        }
+
+                        // Check if friend to be added and group owner are same person
                         if (group.OwnerId == friendId)
                         {
                             Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: friend is group owner, groupId: {group.Id}, userId: {friendId}");
                             response = new AddFriendResponse
                             {
-                                IsError = false,
+                                IsError = true,
                                 ErrorMessage = "friend is group owner",
                             };
                             return Results.Json(response);
@@ -548,8 +564,8 @@ where
                             Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: friend is already group member, groupId: {group.Id}, userId: {friendId}");
                             response = new AddFriendResponse
                             {
-                                IsError = false,
-                                ErrorMessage = null,
+                                IsError = true,
+                                ErrorMessage = $"friend is already group member, groupId: {group.Id}",
                             };
                             return Results.Json(response);
                         }
@@ -679,7 +695,7 @@ where
             });
 
 
-            group.MapPost("/getFriendRequests", async (GetFriendRequestsRequest getFriendRequestsRequest, Db db, MySqlConnection dbConn, Gaos.Common.UserService userService) =>
+            group.MapPost("/getFriendRequests", async (GetFriendRequestsRequest getFriendRequestsRequest, Db db, MySqlDataSource dataSource, Gaos.Common.UserService userService) =>
             {
                 const string METHOD_NAME = "friends/getFriwendRequests";
                 using (var transaction = db.Database.BeginTransaction())
@@ -694,7 +710,7 @@ where
 
                         if (!getFriendRequestsRequest.IsCountOnly)
                         {
-                            var friendRequestsSerach = await GetRequestsForFriendRequestSearch(dbConn, userId, ownerNamePattern, maxCount, false);
+                            var friendRequestsSerach = await GetRequestsForFriendRequestSearch(dataSource, userId, ownerNamePattern, maxCount, false);
 
 
                             List<GetFriendRequestsResponseListItem> friendRequests = new List<GetFriendRequestsResponseListItem>();
@@ -719,7 +735,7 @@ where
                         }
                         else
                         {
-                            var friendRequestsSerach = await GetRequestsForFriendRequestSearch(dbConn, userId, ownerNamePattern, maxCount, true);
+                            var friendRequestsSerach = await GetRequestsForFriendRequestSearch(dataSource, userId, ownerNamePattern, maxCount, true);
                             int totalCount = friendRequestsSerach[0].TotalCount;
                             response = new GetFriendRequestsResponse
                             {
