@@ -332,7 +332,6 @@ WHERE g.OwnerId = @userId
                     if (isRow)
                     {
                         int memberGroupId;
-                        string memberGroupName;
                         int memberGroupOwnerId;
                         string memberGroupOwnerName;
                         {
@@ -385,6 +384,26 @@ WHERE g.OwnerId = @userId
                 return null;
 
 
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, $"{CLASS_NAME}:{METHOD_NAME} {e.Message}");
+                throw new Exception($"getting user group failed");
+            }
+        }
+
+        public async Task<bool> IsUserInGroup(int groupId, int userId)
+        {
+            const string METHOD_NAME = "IsUserInGroup()";
+
+            try
+            {
+                bool isInGroup =   await Db.GroupMember.Where(x => x.GroupId == groupId && x.UserId == userId).AnyAsync();
+                if (!isInGroup)
+                {
+                    isInGroup = await Db.Groupp.Where(x => x.Id == groupId && x.OwnerId == userId).AnyAsync();
+                }
+                return isInGroup;
             }
             catch (Exception e)
             {

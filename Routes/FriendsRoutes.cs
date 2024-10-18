@@ -365,15 +365,15 @@ where
 
 
 
-            group.MapPost("/getMyFriends", async (GetMyFriendsRequest getMyFriendsRequest, Db db, Gaos.Common.UserService userService) =>
+            group.MapPost("/getMyGroupMembers", async (GetMyGroupMembersRequest getMyGroupMembersRequest, Db db, Gaos.Common.UserService userService) =>
             {
-                const string METHOD_NAME = "friends/getMyFriends";
+                const string METHOD_NAME = "friends/getMyGroupMembers";
         
                 try
                 {
-                    GetMyFriendsResponse response;
+                    GetMyGroupMembersResponse response;
 
-                    int maxCount = getMyFriendsRequest.MaxCount;
+                    int maxCount = getMyGroupMembersRequest.MaxCount;
                     int userId = userService.GetUserId();
 
                     bool userIsGroupOwner = false;
@@ -383,23 +383,23 @@ where
                     Groupp group = await db.Groupp
                         .Where(x => x.OwnerId == userId)
                         .FirstOrDefaultAsync();
-                    if ((group != null) && (group.Id == getMyFriendsRequest.GroupId))
+                    if ((group != null) && (group.Id == getMyGroupMembersRequest.GroupId))
                     {
                         userIsGroupOwner = true;
                     }
                     else
                     {
                         userIsGroupMember = await db.GroupMember
-                            .AnyAsync(x => x.GroupId == getMyFriendsRequest.GroupId && x.UserId == userId);
+                            .AnyAsync(x => x.GroupId == getMyGroupMembersRequest.GroupId && x.UserId == userId);
                     }
 
-                    int groupId = getMyFriendsRequest.GroupId;
+                    int groupId = getMyGroupMembersRequest.GroupId;
                     GroupMembersListUser[] members;
                     int membersTotalCount = 0;
 
                     if (userIsGroupOwner || userIsGroupMember)
                     {
-                        if (!getMyFriendsRequest.IsCountOnly)
+                        if (!getMyGroupMembersRequest.IsCountOnly)
                         {
                             // Read group members up to maxCount
                             var query = from groupMember in db.GroupMember
@@ -426,7 +426,7 @@ where
                             }
 
                             // send response
-                            response = new GetMyFriendsResponse
+                            response = new GetMyGroupMembersResponse
                             {
                                 IsError = false,
                                 ErrorMessage = null,
@@ -441,7 +441,7 @@ where
                                 .Where(x => x.GroupId == groupId)
                                 .CountAsync();
                             // send response
-                            response = new GetMyFriendsResponse
+                            response = new GetMyGroupMembersResponse
                             {
                                 IsError = false,
                                 ErrorMessage = null,
@@ -452,11 +452,11 @@ where
                     }
                     else
                     {
-                        if (!getMyFriendsRequest.IsCountOnly)
+                        if (!getMyGroupMembersRequest.IsCountOnly)
                         {
                             members = Array.Empty<GroupMembersListUser>();
                             // send response
-                            response = new GetMyFriendsResponse
+                            response = new GetMyGroupMembersResponse
                             {
                                 IsError = false,
                                 ErrorMessage = null,
@@ -467,7 +467,7 @@ where
                         else
                         {
                             // send response
-                            response = new GetMyFriendsResponse
+                            response = new GetMyGroupMembersResponse
                             {
                                 IsError = false,
                                 ErrorMessage = null,
@@ -480,7 +480,7 @@ where
                 catch (Exception ex)
                 {
                     Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
-                    GetMyFriendsResponse response = new GetMyFriendsResponse
+                    GetMyGroupMembersResponse response = new GetMyGroupMembersResponse
                     {
                         IsError = true,
                         ErrorMessage = "internal error",

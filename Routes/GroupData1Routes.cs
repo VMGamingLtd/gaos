@@ -28,47 +28,39 @@ namespace Gaos.Routes
                 {
                     var response = new GetCreditsResponse();
                     var user = userService.GetUser();
-                    var group = await userService.GetUserGroup();
-                    if (group == null)
+
+
+                    if (!await userService.IsUserInGroup(request.GroupId, user.Id))
                     {
-                        Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: no group"); 
+                        Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: logged in user is not in the group"); 
                         response.IsError = true;
-                        response.ErrorMessage = "no group";
-                        return Results.Json(response);
-                    }
-                    int groupId;
-                    if (group.IsGroupMember)
-                    {
-                        groupId = group.GroupId;
-                    }
-                    else if (group.IsGroupOwner)
-                    {
-                        groupId = group.GroupId;
-                    }
-                    else
-                    {
-                        Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: internal error (user is neither group member nor group owner)"); 
-                        response.IsError = true;
-                        response.ErrorMessage = "internal error (user is neither group member nor group owner)";
+                        response.ErrorMessage = "logged in user is not in the group";
                         return Results.Json(response);
                     }
 
-                    // Get entry from GroupCredits fro the user and group
-                    // Read all records from GroupCredits for given user and group
-                    var groupCreditsList = await db.GroupCredits.Where(x => x.UserId == user.Id && x.GroupId == groupId).ToListAsync();
-                    if (groupCreditsList.Count == 0)
+                    if (!await userService.IsUserInGroup(request.GroupId, request.UserId))
                     {
-                        response.IsError = false;
-                        response.Credits = 0;
+                        Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: queried user is not in the group"); 
+                        response.IsError = true;
+                        response.ErrorMessage = "queried user is not in the group";
+                        return Results.Json(response);
+                    }
+
+
+                    var groupCredits = await db.GroupCredits.Where(x => x.UserId == request.UserId && x.GroupId == request.GroupId).FirstOrDefaultAsync();
+                    if (groupCredits == null)
+                    {
+                        Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: queried user has no credits in this group"); 
+                        response.IsError = true;
+                        response.ErrorMessage = "user has no credits in this group";
                         return Results.Json(response);
                     }
                     else
                     {
                         response.IsError = false;
-                        response.Credits = groupCreditsList[0].Credits;
+                        response.Credits = groupCredits.Credits;
                         return Results.Json(response);
                     }
-
                 }
                 catch (Exception ex)
                 {
