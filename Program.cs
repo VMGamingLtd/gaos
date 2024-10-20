@@ -168,15 +168,22 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =
 });
 
 
-builder.Services.AddHostedService<Gaos.wsrv.WsrConnectionPoolService>(provider =>
+// Change this from AddHostedService to AddSingleton
+builder.Services.AddSingleton<Gaos.wsrv.WsrConnectionPoolService>(provider =>
 {
-    var service = new Gaos.wsrv.WsrConnectionPoolService();
-    return service;
+    Gaos.wsrv.WsrConnectionPoolService wsrConnectionPoolService = new Gaos.wsrv.WsrConnectionPoolService();
+    return wsrConnectionPoolService;
+});
+
+// Add this line to register the hosted service
+builder.Services.AddHostedService<Gaos.wsrv.WsrConnectionPoolService>( provider => {
+    Gaos.wsrv.WsrConnectionPoolService wsrConnectionPoolService = provider.GetRequiredService<Gaos.wsrv.WsrConnectionPoolService>();
+    return wsrConnectionPoolService;
 });
 
 builder.Services.AddScoped<Gaos.wsrv.messages.GroupBroadcastService>(provider =>
 {
-    Gaos.wsrv.WsrConnectionPoolService connectionPool = provider.GetService<Gaos.wsrv.WsrConnectionPoolService>();
+    Gaos.wsrv.WsrConnectionPoolService connectionPool = provider.GetRequiredService<Gaos.wsrv.WsrConnectionPoolService>();
     return new Gaos.wsrv.messages.GroupBroadcastService(connectionPool);
 });
 

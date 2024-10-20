@@ -18,7 +18,7 @@
             _connectionPool = connectionPool;
         }
 
-        public async Task BroadcastCreditsChangeAsync(long fromUserId, long groupId, float credits)
+        public async Task BroadcastCreditsChangeAsync(int fromUserId, int groupId, float credits)
         {
             const string METHOD_NAME = "BroadcastCreditsChangeAsync()";
             try

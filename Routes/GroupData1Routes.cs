@@ -20,10 +20,10 @@ namespace Gaos.Routes
         public static RouteGroupBuilder GroupData1(this RouteGroupBuilder group)
         {
 
-            group.MapPost("/getMycredits", async (GetCreditsRequest request, Db db, Gaos.Common.UserService userService, 
+            group.MapPost("/getCredits", async (GetCreditsRequest request, Db db, Gaos.Common.UserService userService, 
                 GroupData groupDataService, IConfiguration configuration) =>
             {
-                const string METHOD_NAME = "getMycredits()";
+                const string METHOD_NAME = "getCredits()";
                 try
                 {
                     var response = new GetCreditsResponse();
@@ -52,7 +52,7 @@ namespace Gaos.Routes
                     {
                         Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: queried user has no credits in this group"); 
                         response.IsError = true;
-                        response.ErrorMessage = "user has no credits in this group";
+                        response.ErrorMessage = "queried user has no credits in this group";
                         return Results.Json(response);
                     }
                     else

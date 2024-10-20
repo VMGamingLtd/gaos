@@ -25,8 +25,8 @@ namespace GaoProtobuf {
       byte[] descriptorData = global::System.Convert.FromBase64String(
           string.Concat(
             "ChNNZXNzYWdlSGVhZGVyLnByb3RvEgtHYW9Qcm90b2J1ZiKGAQoNTWVzc2Fn",
-            "ZUhlYWRlchIOCgZmcm9tSWQYASABKAMSDAoEdG9JZBgCIAEoAxIPCgdncm91",
-            "cElkGAMgASgDEg4KBnR5cGVJZBgEIAEoBRITCgtuYW1lc3BhY2VJZBgFIAEo",
+            "ZUhlYWRlchIOCgZmcm9tSWQYASABKAUSDAoEdG9JZBgCIAEoBRIPCgdncm91",
+            "cElkGAMgASgFEg4KBnR5cGVJZBgEIAEoBRITCgtuYW1lc3BhY2VJZBgFIAEo",
             "BRIPCgdjbGFzc0lkGAYgASgFEhAKCG1ldGhvZElkGAcgASgFQg6qAgtHYW9Q",
             "cm90b2J1ZmIGcHJvdG8z"));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
@@ -92,10 +92,10 @@ namespace GaoProtobuf {
 
     /// <summary>Field number for the "fromId" field.</summary>
     public const int FromIdFieldNumber = 1;
-    private long fromId_;
+    private int fromId_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public long FromId {
+    public int FromId {
       get { return fromId_; }
       set {
         fromId_ = value;
@@ -104,10 +104,10 @@ namespace GaoProtobuf {
 
     /// <summary>Field number for the "toId" field.</summary>
     public const int ToIdFieldNumber = 2;
-    private long toId_;
+    private int toId_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public long ToId {
+    public int ToId {
       get { return toId_; }
       set {
         toId_ = value;
@@ -116,10 +116,10 @@ namespace GaoProtobuf {
 
     /// <summary>Field number for the "groupId" field.</summary>
     public const int GroupIdFieldNumber = 3;
-    private long groupId_;
+    private int groupId_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public long GroupId {
+    public int GroupId {
       get { return groupId_; }
       set {
         groupId_ = value;
@@ -203,9 +203,9 @@ namespace GaoProtobuf {
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public override int GetHashCode() {
       int hash = 1;
-      if (FromId != 0L) hash ^= FromId.GetHashCode();
-      if (ToId != 0L) hash ^= ToId.GetHashCode();
-      if (GroupId != 0L) hash ^= GroupId.GetHashCode();
+      if (FromId != 0) hash ^= FromId.GetHashCode();
+      if (ToId != 0) hash ^= ToId.GetHashCode();
+      if (GroupId != 0) hash ^= GroupId.GetHashCode();
       if (TypeId != 0) hash ^= TypeId.GetHashCode();
       if (NamespaceId != 0) hash ^= NamespaceId.GetHashCode();
       if (ClassId != 0) hash ^= ClassId.GetHashCode();
@@ -228,17 +228,17 @@ namespace GaoProtobuf {
     #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       output.WriteRawMessage(this);
     #else
-      if (FromId != 0L) {
+      if (FromId != 0) {
         output.WriteRawTag(8);
-        output.WriteInt64(FromId);
+        output.WriteInt32(FromId);
       }
-      if (ToId != 0L) {
+      if (ToId != 0) {
         output.WriteRawTag(16);
-        output.WriteInt64(ToId);
+        output.WriteInt32(ToId);
       }
-      if (GroupId != 0L) {
+      if (GroupId != 0) {
         output.WriteRawTag(24);
-        output.WriteInt64(GroupId);
+        output.WriteInt32(GroupId);
       }
       if (TypeId != 0) {
         output.WriteRawTag(32);
@@ -266,17 +266,17 @@ namespace GaoProtobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
-      if (FromId != 0L) {
+      if (FromId != 0) {
         output.WriteRawTag(8);
-        output.WriteInt64(FromId);
+        output.WriteInt32(FromId);
       }
-      if (ToId != 0L) {
+      if (ToId != 0) {
         output.WriteRawTag(16);
-        output.WriteInt64(ToId);
+        output.WriteInt32(ToId);
       }
-      if (GroupId != 0L) {
+      if (GroupId != 0) {
         output.WriteRawTag(24);
-        output.WriteInt64(GroupId);
+        output.WriteInt32(GroupId);
       }
       if (TypeId != 0) {
         output.WriteRawTag(32);
@@ -304,14 +304,14 @@ namespace GaoProtobuf {
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public int CalculateSize() {
       int size = 0;
-      if (FromId != 0L) {
-        size += 1 + pb::CodedOutputStream.ComputeInt64Size(FromId);
+      if (FromId != 0) {
+        size += 1 + pb::CodedOutputStream.ComputeInt32Size(FromId);
       }
-      if (ToId != 0L) {
-        size += 1 + pb::CodedOutputStream.ComputeInt64Size(ToId);
+      if (ToId != 0) {
+        size += 1 + pb::CodedOutputStream.ComputeInt32Size(ToId);
       }
-      if (GroupId != 0L) {
-        size += 1 + pb::CodedOutputStream.ComputeInt64Size(GroupId);
+      if (GroupId != 0) {
+        size += 1 + pb::CodedOutputStream.ComputeInt32Size(GroupId);
       }
       if (TypeId != 0) {
         size += 1 + pb::CodedOutputStream.ComputeInt32Size(TypeId);
@@ -337,13 +337,13 @@ namespace GaoProtobuf {
       if (other == null) {
         return;
       }
-      if (other.FromId != 0L) {
+      if (other.FromId != 0) {
         FromId = other.FromId;
       }
-      if (other.ToId != 0L) {
+      if (other.ToId != 0) {
         ToId = other.ToId;
       }
-      if (other.GroupId != 0L) {
+      if (other.GroupId != 0) {
         GroupId = other.GroupId;
       }
       if (other.TypeId != 0) {
@@ -378,15 +378,15 @@ namespace GaoProtobuf {
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
           case 8: {
-            FromId = input.ReadInt64();
+            FromId = input.ReadInt32();
             break;
           }
           case 16: {
-            ToId = input.ReadInt64();
+            ToId = input.ReadInt32();
             break;
           }
           case 24: {
-            GroupId = input.ReadInt64();
+            GroupId = input.ReadInt32();
             break;
           }
           case 32: {
@@ -425,15 +425,15 @@ namespace GaoProtobuf {
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
           case 8: {
-            FromId = input.ReadInt64();
+            FromId = input.ReadInt32();
             break;
           }
           case 16: {
-            ToId = input.ReadInt64();
+            ToId = input.ReadInt32();
             break;
           }
           case 24: {
-            GroupId = input.ReadInt64();
+            GroupId = input.ReadInt32();
             break;
           }
           case 32: {
