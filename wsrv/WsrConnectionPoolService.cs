@@ -56,6 +56,10 @@ namespace Gaos.wsrv
                     Log.Information($"{CLASS_NAME}:{METHOD_NAME}: Client pool initialized, current pool size {clientPool.Count}");
                 }
             }
+            catch (Exception e)
+            {
+                Log.Error($"{CLASS_NAME}:{METHOD_NAME}: Error initializing client pool: {e.Message}");
+            }
             finally
             {
                 initSemaphore.Release();
@@ -65,10 +69,10 @@ namespace Gaos.wsrv
         public async Task StartAsync(CancellationToken cancellationToken)
         {
             await Init();
-            
+
+
             // Start the periodic connection check
             connectionCheckTimer = new Timer(CheckConnections, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(500));
-
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
@@ -93,7 +97,6 @@ namespace Gaos.wsrv
         public async Task EnsureConnections()
         {
             const string METHOD_NAME = "EnsureConnections()";
-            Log.Debug($"{CLASS_NAME}:{METHOD_NAME}: Checking connections. Current pool size: {clientPool.Count}");
             await ensureConnectionsSemathore.WaitAsync();
             try
             {
@@ -101,9 +104,11 @@ namespace Gaos.wsrv
                 EvictConnections();
 
                 var missingConnections = poolSize - clientPool.Count;
-                if (missingConnections <= 0) return;
+                if (missingConnections <= 0)
+                {
+                    return;
+                }
 
-                Log.Information($"{CLASS_NAME}:{METHOD_NAME}: Adding {missingConnections} missing connections");
 
                 var tasks = new List<Task>();
 
@@ -128,7 +133,6 @@ namespace Gaos.wsrv
         public async void EvictConnections()
         {
             const string METHOD_NAME = "EvictConnections()";
-            Log.Debug($"{CLASS_NAME}:{METHOD_NAME}: Evicting closed connections");
 
             var activeSockets = new ConcurrentBag<Socket>();
             int evictedCount = 0;
@@ -139,7 +143,7 @@ namespace Gaos.wsrv
                 checkedCount++;
                 try
                 {
-                    if (socket.Poll(50, SelectMode.SelectRead))
+                    if (socket.Poll(1, SelectMode.SelectRead))
                     {
                         byte[] buff = new byte[1];
                         if (socket.Receive(buff, SocketFlags.Peek) == 0)
@@ -147,7 +151,6 @@ namespace Gaos.wsrv
                             // Connection closed
                             socket.Close();
                             evictedCount++;
-                            Log.Debug($"{CLASS_NAME}:{METHOD_NAME}: Evicted closed connection");
                         }
                         else
                         {
@@ -176,7 +179,10 @@ namespace Gaos.wsrv
                 clientPool.Add(activeSocket);
             }
 
-            Log.Information($"{CLASS_NAME}:{METHOD_NAME}: Eviction complete. Checked {checkedCount} connections. Evicted {evictedCount} connections. Current pool size: {clientPool.Count}");
+            if (evictedCount > 0)
+            {
+                Log.Information($"{CLASS_NAME}:{METHOD_NAME}: Eviction complete. Evicted {evictedCount} connections. Current pool size: {clientPool.Count}");
+            }
         }
 
         private async Task<bool> CreateAndAddClientAsync()

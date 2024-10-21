@@ -77,6 +77,7 @@ builder.Services.AddMySqlDataSource(dbConnectionString);
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 Log.Logger = new LoggerConfiguration()
+    //.MinimumLevel.Debug()
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Warning)
     .WriteTo.Console()
     .WriteTo.Debug()
