@@ -1,39 +1,39 @@
 ﻿namespace Gaos.wsrv
 {
     using GaoProtobuf;
+    using Google.Protobuf;
     using System;
     using System.IO;
 
     public class WebsocketTransport
     {
-        public static byte[] SerializeMessage<T>(MessageHeader messageHeader, T message) where T : Google.Protobuf.IMessage
+
+        public static byte[] SerializeMessageHeader(GaoProtobuf.MessageHeader messageHeader)
         {
-            byte[] messageBytes;
-            using (var stream = new System.IO.MemoryStream())
-            {
-                using (Google.Protobuf.CodedOutputStream codedStream = new Google.Protobuf.CodedOutputStream(stream, true))
-                {
-                    // Serialize the message header
-                    codedStream.WriteUInt32(ToNetworkByteOrder((uint)messageHeader.CalculateSize()));
-                    messageHeader.WriteTo(codedStream);
+            byte[] message = messageHeader.ToByteString().ToByteArray();
+            byte[] size = BitConverter.GetBytes(ToNetworkByteOrder((uint)message.Length));
+            byte[] buffer = new byte[size.Length + message.Length];
+            size.CopyTo(buffer, 0);
+            message.CopyTo(buffer, size.Length);
+            return buffer;
+        }
 
-                    // Serialize the actual message
-                    codedStream.WriteUInt32(ToNetworkByteOrder((uint)message.CalculateSize()));
-                    message.WriteTo(codedStream);
 
-                    messageBytes = stream.ToArray();
-                }
-            }
+        public static byte[] SerializeMessage(GaoProtobuf.MessageHeader messageHeader, byte [] message)
+        {
+            byte[] header = SerializeMessageHeader(messageHeader);
+            byte[] sizeMessage = BitConverter.GetBytes(ToNetworkByteOrder((uint)message.Length));
+            byte[] sizeTotal = BitConverter.GetBytes(ToNetworkByteOrder((uint)header.Length + (uint)sizeMessage.Length + (uint)message.Length));
 
-            using (var stream = new System.IO.MemoryStream())
-            {
-                int messageLength = messageBytes.Length;
-                stream.Write(BitConverter.GetBytes(ToNetworkByteOrder((uint)messageLength)), 0, 4);
-                stream.Write(messageBytes, 0, messageLength);
-                messageBytes = stream.ToArray();
-            }
 
-            return messageBytes;
+            // concatente total size, header, size of message, and message
+            byte[] buffer = new byte[sizeTotal.Length + header.Length + sizeMessage.Length + message.Length];
+            sizeTotal.CopyTo(buffer, 0);
+            header.CopyTo(buffer, sizeTotal.Length);
+            sizeMessage.CopyTo(buffer, sizeTotal.Length + header.Length);
+            message.CopyTo(buffer, sizeTotal.Length + header.Length + sizeMessage.Length);
+
+            return buffer;
         }
 
         public static uint ToNetworkByteOrder(uint value)

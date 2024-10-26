@@ -224,9 +224,11 @@ namespace Gaos.wsrv
             }
         }
 
-        public async Task SendDataAsync(byte[] message, int timeoutMilliseconds = 5000)
+        public async Task<bool> SendDataAsync(byte[] message, int timeoutMilliseconds = 5000)
         {
+            Log.Information($"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 100: SendDataAsync({message.Length}): sending...");
             const string METHOD_NAME = "SendDataAsync()";
+            /*
             await initSemaphore.WaitAsync();
             try
             {
@@ -239,12 +241,14 @@ namespace Gaos.wsrv
             {
                 initSemaphore.Release();
             }
+            */
 
 
             await poolSemaphore.WaitAsync();
             try
             {
                 int retries = poolSize;
+                bool wasSent = false;
                 while (retries-- > 0)
                 {
                     if (clientPool.TryTake(out Socket client))
@@ -257,10 +261,12 @@ namespace Gaos.wsrv
                                 var sendTask = networkStream.WriteAsync(message, 0, message.Length, cts.Token);
                                 await sendTask;
                             }
+                            wasSent = true;
 
                             // Return client to pool
                             clientPool.Add(client);
                             retries = 0;
+                            Log.Information($"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 200: SendDataAsync(): data sent");
                         }
                         catch (OperationCanceledException)
                         {
@@ -279,6 +285,7 @@ namespace Gaos.wsrv
                         Log.Error($"{CLASS_NAME}:{METHOD_NAME}: error while sending data: no available client in the pool.");
                     }
                 }
+                return wasSent;
             }
             finally
             {

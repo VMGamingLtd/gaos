@@ -6,6 +6,7 @@
     using System;
     using System.Threading.Tasks;
     using Serilog;
+    using Google.Protobuf;
 
     public class GroupBroadcastService
     {
@@ -18,7 +19,7 @@
             _connectionPool = connectionPool;
         }
 
-        public async Task BroadcastCreditsChangeAsync(int fromUserId, int groupId, float credits)
+        public async Task<bool> BroadcastCreditsChangeAsync(int fromUserId, int groupId, float credits)
         {
             const string METHOD_NAME = "BroadcastCreditsChangeAsync()";
             try
@@ -45,15 +46,21 @@
                 };
 
                 // Serialize the complete message using WebsocketTransport
-                byte[] messageBytes = WebsocketTransport.SerializeMessage(messageHeader, creditsChange);
+                byte[] messageBytes = WebsocketTransport.SerializeMessage(messageHeader, creditsChange.ToByteArray());
 
                 // Send the data asynchronously using the connection pool
-                await _connectionPool.SendDataAsync(messageBytes);
+                bool wasSent = await _connectionPool.SendDataAsync(messageBytes);
+                if (!wasSent)
+                {
+                    Log.Error($"{CLASS_NAME}:{METHOD_NAME}: error: failed to send data");
+                }
+                return wasSent;
 
             }
             catch (Exception ex)
             {
                 Log.Error($"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
+                return false;
             }
         }
     }

@@ -119,6 +119,7 @@ namespace Gaos.Routes
                         // Get entry from GroupCredits fro the user and group
                         // Read all records from GroupCredits for given user and group
                         var groupCreditsList = await db.GroupCredits.Where(x => x.UserId == user.Id && x.GroupId == groupId).ToListAsync();
+                        float totalCredits = 0;
                         if (groupCreditsList.Count == 0)
                         {
                             // Create a new entry in GroupCredits for the user and group
@@ -130,6 +131,7 @@ namespace Gaos.Routes
                             };
                             db.GroupCredits.Add(groupCredits);
                             await db.SaveChangesAsync();
+                            totalCredits = request.Credits;
 
                         }
                         else
@@ -137,14 +139,19 @@ namespace Gaos.Routes
                             // Update the existing entry in GroupCredits for the user and group
                             groupCreditsList[0].Credits += request.Credits;
                             await db.SaveChangesAsync();
+                            totalCredits = groupCreditsList[0].Credits;
                         }
                         transaction.Commit();
 
                         // Broadcast the new credits to the group
-                        await groupBroadcastService.BroadcastCreditsChangeAsync(user.Id, groupId, request.Credits);
+                        bool wasSent = await groupBroadcastService.BroadcastCreditsChangeAsync(user.Id, groupId, totalCredits);
+                        if (!wasSent)
+                        {
+                            Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: error broadcasting credits change");
+                        }
 
                         response.IsError = false;
-                        response.Credits = groupCreditsList[0].Credits;
+                        response.Credits = totalCredits;
                         return Results.Json(response);
                     }
                     catch (Exception ex)

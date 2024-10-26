@@ -5,7 +5,7 @@
         WebSocket = 1,
         UnityBrowserChannel = 2,
         Group = 3,
-        Gaos = 5
+        Gaos = 4
     }
 
     public enum WebSocketClassIds
