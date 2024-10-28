@@ -25,7 +25,9 @@ namespace Gaos.wsrv
         private bool isInitialized;
         private Timer connectionCheckTimer;
 
-        public WsrConnectionPoolService(string ipAddress = "127.0.0.1", int port = 3000, int poolSize = 5)
+        private bool isConnectToGaow = false;
+
+        public WsrConnectionPoolService(IConfiguration configuration, string ipAddress = "127.0.0.1", int port = 3000, int poolSize = 5)
         {
             this.ipAddress = ipAddress;
             this.port = port;
@@ -35,6 +37,20 @@ namespace Gaos.wsrv
             this.initSemaphore = new SemaphoreSlim(1);
             this.ensureConnectionsSemathore = new SemaphoreSlim(1);
             this.isInitialized = false;
+
+
+            if (configuration["gaow_connect"] == null)
+            {
+                throw new Exception("missing configuration value: gaow_connect");
+            }
+            if (configuration["gaow_connect"] == "true")
+            {
+                isConnectToGaow = true;
+            }
+            else
+            {
+                isConnectToGaow = false;
+            }
         }
 
         public async Task Init()
@@ -68,6 +84,11 @@ namespace Gaos.wsrv
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
+            if (!isConnectToGaow)
+            {
+                return;
+            }
+
             await Init();
 
 
@@ -226,6 +247,10 @@ namespace Gaos.wsrv
 
         public async Task<bool> SendDataAsync(byte[] message, int timeoutMilliseconds = 5000)
         {
+            if (!isConnectToGaow)
+            {
+                return false;
+            }
             Log.Information($"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 100: SendDataAsync({message.Length}): sending...");
             const string METHOD_NAME = "SendDataAsync()";
             /*

@@ -172,7 +172,7 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =
 // Change this from AddHostedService to AddSingleton
 builder.Services.AddSingleton<Gaos.wsrv.WsrConnectionPoolService>(provider =>
 {
-    Gaos.wsrv.WsrConnectionPoolService wsrConnectionPoolService = new Gaos.wsrv.WsrConnectionPoolService();
+    Gaos.wsrv.WsrConnectionPoolService wsrConnectionPoolService = new Gaos.wsrv.WsrConnectionPoolService(builder.Configuration);
     return wsrConnectionPoolService;
 });
 

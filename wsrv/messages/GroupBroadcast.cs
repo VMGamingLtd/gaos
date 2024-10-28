@@ -24,9 +24,6 @@
             const string METHOD_NAME = "BroadcastCreditsChangeAsync()";
             try
             {
-                // Ensure the connection pool is initialized
-                await _connectionPool.Init();
-
                 // Create the MessageHeader
                 MessageHeader messageHeader = new MessageHeader
                 {
