@@ -33,10 +33,11 @@
         public DbSet<GroupMember> GroupMember => Set<GroupMember>();
         public DbSet<GroupMemberRequest> GroupMemberRequest => Set<GroupMemberRequest>();
         public DbSet<UserInterfaceColors> UserInterfaceColors => Set<UserInterfaceColors>();
+        public DbSet<GroupCredits> GroupCredits => Set<GroupCredits>();
+        public DbSet<LeaderboardData> LeaderboardData => Set<LeaderboardData>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-
             // User
             modelBuilder.Entity<User>().HasKey(e => e.Id);
             modelBuilder.Entity<User>().HasIndex(e => e.Name).IsUnique(true);
@@ -84,7 +85,6 @@
             // BuildVersion
             modelBuilder.Entity<BuildVersion>().HasKey(e => e.Id);
 
-
             // Device
             modelBuilder.Entity<Device>().HasKey(e => e.Id);
             modelBuilder.Entity<Device>()
@@ -130,6 +130,16 @@
             modelBuilder.Entity<GroupMemberRequest>().HasOne(e => e.Group).WithMany().HasForeignKey(e => e.GroupId);
             modelBuilder.Entity<GroupMemberRequest>().HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
             modelBuilder.Entity<GroupMemberRequest>().HasIndex(e => new { e.GroupId, e.UserId }).IsUnique(true);
+
+            // GroupCredits
+            modelBuilder.Entity<GroupCredits>().HasKey(e => e.Id);
+            modelBuilder.Entity<GroupCredits>().HasOne(e => e.Group).WithMany().HasForeignKey(e => e.GroupId);
+            modelBuilder.Entity<GroupCredits>().HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
+            modelBuilder.Entity<GroupMember>().HasIndex(e => new { e.GroupId, e.UserId }).IsUnique(true);
+
+            // LeaderboardData
+            modelBuilder.Entity<LeaderboardData>().HasKey(e => e.Id);
+            modelBuilder.Entity<LeaderboardData>().HasIndex(e => e.UserId).IsUnique(true);
 
             Gaos.Seed.SeedAll.Seed(modelBuilder, Configuration, Environment);
         }

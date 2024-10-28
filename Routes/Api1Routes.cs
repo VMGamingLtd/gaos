@@ -1,7 +1,8 @@
 ﻿#pragma warning disable 8600, 8602 // Disable null check warnings for fields that are initialized in the constructor
 
-using gaos.Routes.Model.Api1;
+using gaos.Routes.Model.LeaderboardDataJson;
 using Gaos.Dbo;
+using Gaos.Dbo.Model;
 using Gaos.Routes.Model.ApiJson;
 using Gaos.Routes.Model.GameDataJson;
 using Serilog;
@@ -11,17 +12,9 @@ namespace Gaos.Routes
 
     public static class Api1Routes
     {
-
         public static string CLASS_NAME = typeof(Api1Routes).Name;
         public static RouteGroupBuilder GroupApi1(this RouteGroupBuilder group)
         {
-            group.MapGet("/hello", (Db db) =>
-            {
-                var hello1 = new HelloResponse();
-                hello1.Msg = "Hello";
-                return Results.Json(hello1);
-            });
-
             group.MapGet("/userGameDataGet", async (int userId, int slotId, Db db, Gaos.Common.UserService userService, Gaos.Mongo.GameData gameDataService) =>
             {
                 const string METHOD_NAME = "userGameDataGet()";
@@ -64,6 +57,59 @@ namespace Gaos.Routes
                     return Results.Json(response);
                 }
 
+            });
+
+            group.MapGet("/leaderboardDataGet", async (Gaos.Common.LeaderboardService leaderboardService) =>
+            {
+                const string METHOD_NAME = "leaderboardDataGet()";
+
+                try
+                {
+                    LeaderboardDataGetResponse response;
+
+                    var result = await leaderboardService.GetLeaderboardDataAsync();
+
+                    if (result.Error)
+                    {
+                        response = new LeaderboardDataGetResponse()
+                        {
+                            Error = true,
+                            ErrorMessage = result.ErrorMessage,
+                        };
+                        return Results.Json(response);
+                    }
+
+                    response = new LeaderboardDataGetResponse()
+                    {
+                        Error = false,
+                        ErrorMessage = "",
+                        LeaderboardDataJson = result.LeaderboardDataJson,
+                    };
+                    return Results.Json(response);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
+                    LeaderboardDataGetResponse response = new()
+                    {
+                        Error = true,
+                        ErrorMessage = ex.Message,
+                    };
+                    return Results.Json(response);
+                }
+            });
+
+            group.MapPost("/updateLeaderboardData", async (LeaderboardData data, Gaos.Common.LeaderboardService leaderboardService) =>
+            {
+                try
+                {
+                    await leaderboardService.UpdateLeaderboardData(data);
+                    return Results.Ok(new { success = true, message = "LeaderboardData updated successfully" });
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(new { success = false, message = ex.Message });
+                }
             });
 
             group.MapGet("/tokenClaims", (HttpContext context, Db db) =>

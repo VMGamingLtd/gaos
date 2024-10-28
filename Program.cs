@@ -31,7 +31,17 @@ if (builder.Configuration["db_connection_string"] == null)
     throw new Exception("missing configuration value: db_connection_string");
 
 }
-var dbConnectionString = builder.Configuration.GetValue<string>("db_connection_string");
+if (builder.Configuration["db_user"] == null)
+{
+    throw new Exception("missing configuration value: db_user");
+
+}
+if (builder.Configuration["db_password"] == null)
+{
+    throw new Exception("missing configuration value: db_password");
+
+}
+
 
 if (builder.Configuration["db_major_version"] == null)
 {
@@ -45,24 +55,29 @@ if (builder.Configuration["db_minor_version"] == null)
 }
 var dbMinorVersion = builder.Configuration.GetValue<int>("db_minor_version");
 
-
 var dbServerVersion = new MariaDbServerVersion(new Version(dbMajorVersion, dbMinorVersion));
 
+var dbConnectionString = builder.Configuration.GetValue<string>("db_connection_string");
+dbConnectionString += $";user={builder.Configuration.GetValue<string>("db_user")}";
+dbConnectionString += $";password={Gaos.Encryption.EncryptionHelper.Decrypt(builder.Configuration.GetValue<string>("db_password"))}";
 
-builder.Services.AddDbContext<Db>(opt =>
-    opt.UseMySql(dbConnectionString, dbServerVersion)
-    //.LogTo(Console.WriteLine, LogLevel.Information)
-    .LogTo(Console.WriteLine, LogLevel.Debug)
-    .EnableSensitiveDataLogging()
-    .EnableDetailedErrors()
+builder.Services.AddDbContext<Db>(opt => {
+
+
+        opt.UseMySql(dbConnectionString, dbServerVersion)
+        .LogTo(Console.WriteLine, LogLevel.Information)
+        //.LogTo(Console.WriteLine, LogLevel.Debug)
+        .EnableSensitiveDataLogging()
+        .EnableDetailedErrors();
+    }
 );
-
-builder.Services.AddMySqlDataSource(builder.Configuration["db_connection_string"]);
+builder.Services.AddMySqlDataSource(dbConnectionString);
 
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 Log.Logger = new LoggerConfiguration()
+    //.MinimumLevel.Debug()
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Warning)
     .WriteTo.Console()
     .WriteTo.Debug()
@@ -98,7 +113,15 @@ builder.Services.AddScoped<Gaos.Common.UserService>(provider =>
     HttpContext context = provider.GetService<IHttpContextAccessor>()?.HttpContext;
     Gaos.Auth.TokenService tokenService = provider.GetService<Gaos.Auth.TokenService>();
     Gaos.Dbo.Db db = provider.GetService<Gaos.Dbo.Db>();
-    return new Gaos.Common.UserService(context, tokenService, db);
+    MySqlConnection dbConn = provider.GetService<MySqlConnection>();
+    MySqlDataSource dataSource = provider.GetService<MySqlDataSource>();
+    return new Gaos.Common.UserService(context, tokenService, db, dataSource);
+});
+
+builder.Services.AddScoped<Gaos.Common.LeaderboardService>(provider =>
+{
+    Gaos.Dbo.Db db = provider.GetService<Gaos.Dbo.Db>();
+    return new Gaos.Common.LeaderboardService(db);
 });
 
 builder.Services.AddScoped<Gaos.Mongo.MongoService>(provider =>
@@ -152,6 +175,26 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =
 });
 
 
+// Change this from AddHostedService to AddSingleton
+builder.Services.AddSingleton<Gaos.wsrv.WsrConnectionPoolService>(provider =>
+{
+    Gaos.wsrv.WsrConnectionPoolService wsrConnectionPoolService = new Gaos.wsrv.WsrConnectionPoolService(builder.Configuration);
+    return wsrConnectionPoolService;
+});
+
+// Add this line to register the hosted service
+builder.Services.AddHostedService<Gaos.wsrv.WsrConnectionPoolService>( provider => {
+    Gaos.wsrv.WsrConnectionPoolService wsrConnectionPoolService = provider.GetRequiredService<Gaos.wsrv.WsrConnectionPoolService>();
+    return wsrConnectionPoolService;
+});
+
+builder.Services.AddScoped<Gaos.wsrv.messages.GroupBroadcastService>(provider =>
+{
+    Gaos.wsrv.WsrConnectionPoolService connectionPool = provider.GetRequiredService<Gaos.wsrv.WsrConnectionPoolService>();
+    return new Gaos.wsrv.messages.GroupBroadcastService(connectionPool);
+});
+
+
 var app = builder.Build();
 
 
@@ -171,6 +214,7 @@ app.MapGroup("/api").GroupApi();
 app.MapGroup("/api1").GroupApi1();
 app.MapGroup("/api/gameData").GameData();
 app.MapGroup("/api/groupData").GroupData();
+app.MapGroup("/api/groupData1").GroupData1();
 app.MapGroup("/api/chatRoom").GroupChatRoom();
 app.MapGroup("/api/friends").GroupFriends();
 app.Run();

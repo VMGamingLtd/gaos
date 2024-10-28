@@ -2,7 +2,7 @@
 {
 
     [System.Serializable]
-    public class GetMyFriendsRequest
+    public class GetMyGroupMembersRequest
     {
         public int GroupId { get; set; }
         public  int MaxCount { get; set; }

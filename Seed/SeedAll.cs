@@ -1,5 +1,4 @@
-﻿using Gaos.Dbo;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 
 namespace Gaos.Seed
 {
@@ -10,6 +9,7 @@ namespace Gaos.Seed
             Role.Seed(modelBuilder, configuration, environment);
             User.Seed(modelBuilder, configuration, environment);
             JWT.Seed(modelBuilder, configuration, environment);
+            Leaderboard.Seed(modelBuilder, configuration, environment);
         }
     }
 }

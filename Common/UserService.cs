@@ -1,7 +1,8 @@
-﻿#pragma warning disable 8625, 8603, 8629, 8604
+﻿#pragma warning disable 8625, 8603, 8629, 8604, 8618
 
 using Gaos.Dbo.Model;
 using Microsoft.EntityFrameworkCore;
+using MySqlConnector;
 using Serilog;
 namespace Gaos.Common
 {
@@ -12,15 +13,18 @@ namespace Gaos.Common
         private Gaos.Auth.TokenService TokenService = null;
         private HttpContext Context = null;
         private Gaos.Dbo.Db Db = null;
+        private MySqlDataSource DataSource = null;
 
         private Gaos.Dbo.Model.User? User = null;
         private GetGroupResult getGroupResult = null;
+        private bool isGetGroupResult = false;
 
-        public UserService(HttpContext context, Auth.TokenService tokenService, Gaos.Dbo.Db db)
+        public UserService(HttpContext context, Auth.TokenService tokenService, Gaos.Dbo.Db db, MySqlDataSource dataSource)
         {
             TokenService = tokenService;
             Context = context;
             Db = db;
+            DataSource = dataSource;
         }
 
         public Gaos.Model.Token.TokenClaims GetTokenClaims()
@@ -172,7 +176,7 @@ namespace Gaos.Common
         // Returns either group of which user is owner or group of which user is member or null if user is neither owner nor member of any group.
         // If group does not have any members it is not considered to be a group, user is not considered to be an owner.
 
-        public async Task<GetGroupResult?> GetUserGroup()
+        public async Task<GetGroupResult?> GetUserGroup_old()
         {
             const string METHOD_NAME = "GetGroup()";
 
@@ -265,6 +269,141 @@ namespace Gaos.Common
                         return null;
                     }
                 }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, $"{CLASS_NAME}:{METHOD_NAME} {e.Message}");
+                throw new Exception($"getting user group failed");
+            }
+        }
+
+        // Returns either group of which user is owner or group of which user is member or null if user is neither owner nor member of any group.
+        // If group does not have any members it is not considered to be a group, user is not considered to be an owner.
+
+        public async Task<GetGroupResult?> GetUserGroup()
+        {
+            const string METHOD_NAME = "GetUserGroup1()";
+            const string sqlQueryMember =
+$@"
+SELECT 
+    g.Id AS memberGroupId,
+    g.OwnerId AS memberGroupOwnerId,
+    u.Name AS memberGroupOwnerName
+FROM groupp g
+JOIN groupmember gm ON g.Id = gm.GroupId
+JOIN user u ON g.OwnerId = u.Id
+WHERE gm.UserId = @userId
+";
+            const string sqlQueryOwner =
+$@"
+SELECT 
+    g.Id AS ownedGroupId,
+    g.Name AS ownedGroupName
+FROM groupp g
+WHERE g.OwnerId = @userId
+    AND EXISTS (SELECT 1 FROM groupmember gm WHERE gm.GroupId = g.Id)
+";
+            try
+            {
+                if (this.isGetGroupResult)
+                {
+                    return this.getGroupResult;
+                }
+
+                var user = GetUser();
+                if (user == null)
+                {
+                    Log.Error($"{CLASS_NAME}:{METHOD_NAME} user not logged in");
+                    throw new Exception("user not logged int");
+                }
+
+                // first try if user is a member of a group
+
+                //await DbConn.OpenAsync();
+                using var connection = await DataSource.OpenConnectionAsync();
+
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = sqlQueryMember;
+                    command.Parameters.AddWithValue("@userId", user.Id);
+                    using var reader = await command.ExecuteReaderAsync();
+
+                    bool isRow = await reader.ReadAsync();
+                    if (isRow)
+                    {
+                        int memberGroupId;
+                        int memberGroupOwnerId;
+                        string memberGroupOwnerName;
+                        {
+                            memberGroupId = reader.GetInt32(0);
+                            memberGroupOwnerId = reader.GetInt32(1);
+                            memberGroupOwnerName = reader.GetString(2);
+                        }
+                        var getGroupResult = new GetGroupResult
+                        {
+                            IsGroupOwner = false,
+                            IsGroupMember = true,
+                            GroupId = memberGroupId,
+                            GroupOwnerId = memberGroupOwnerId,
+                            GroupOwnerName = memberGroupOwnerName
+                        };
+                        this.getGroupResult = getGroupResult;
+                        this.isGetGroupResult = true;
+                        reader.Close();
+                        return getGroupResult;
+                    }
+                }
+
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = sqlQueryOwner;
+                    command.Parameters.AddWithValue("@userId", user.Id);
+                    using var reader = await command.ExecuteReaderAsync();
+
+                    bool isRow = await reader.ReadAsync();
+                    if (isRow)
+                    {
+                        int ownedGroupId = reader.GetInt32(0);
+                        string ownedGroupName = reader.GetString(1); 
+                        var getGroupResult = new GetGroupResult
+                        {
+                            IsGroupOwner = true,
+                            IsGroupMember = false,
+                            GroupId = ownedGroupId,
+                            GroupOwnerId = user.Id,
+                            GroupOwnerName = ownedGroupName
+                        };
+                        this.getGroupResult = getGroupResult;
+                        this.isGetGroupResult = true;
+                        reader.Close();
+                        return getGroupResult;
+                    }
+                }
+
+
+                return null;
+
+
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, $"{CLASS_NAME}:{METHOD_NAME} {e.Message}");
+                throw new Exception($"getting user group failed");
+            }
+        }
+
+        public async Task<bool> IsUserInGroup(int groupId, int userId)
+        {
+            const string METHOD_NAME = "IsUserInGroup()";
+
+            try
+            {
+                bool isInGroup =   await Db.GroupMember.Where(x => x.GroupId == groupId && x.UserId == userId).AnyAsync();
+                if (!isInGroup)
+                {
+                    isInGroup = await Db.Groupp.Where(x => x.Id == groupId && x.OwnerId == userId).AnyAsync();
+                }
+                return isInGroup;
             }
             catch (Exception e)
             {
