@@ -8,5 +8,4 @@ bin/
 *.swp
 .idea
 
-appsettings.Development.json
 appsettings.Test.json
