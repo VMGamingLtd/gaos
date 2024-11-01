@@ -110,7 +110,7 @@ namespace gaos.Tests
 
         static void TestEncryptionHelper_1()
         {
-            string plaintext = "changeit";
+            string plaintext = "xxxxxxxxx";
 
             string encrypted = Gaos.Encryption.EncryptionHelper.Encrypt(plaintext);
             Console.WriteLine($"Encrypted: {encrypted}");
