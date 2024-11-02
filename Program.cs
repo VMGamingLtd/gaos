@@ -26,6 +26,7 @@ builder.Configuration.AddJsonFile($"appsettings.{builder.Environment.Environment
 builder.Configuration.AddEnvironmentVariables();
 
 
+
 if (builder.Configuration["db_connection_string"] == null)
 {
     throw new Exception("missing configuration value: db_connection_string");
@@ -60,6 +61,14 @@ var dbServerVersion = new MariaDbServerVersion(new Version(dbMajorVersion, dbMin
 var dbConnectionString = builder.Configuration.GetValue<string>("db_connection_string");
 dbConnectionString += $";user={builder.Configuration.GetValue<string>("db_user")}";
 dbConnectionString += $";password={Gaos.Encryption.EncryptionHelper.Decrypt(builder.Configuration.GetValue<string>("db_password"))}";
+
+if (builder.Environment.EnvironmentName == "Test")
+{
+    var section = builder.Configuration.GetSection("Kestrel:Certificates:Default");
+    var encryptedPassword = section.GetValue<string>("Password");
+    var decryptedPassword = Gaos.Encryption.EncryptionHelper.Decrypt(encryptedPassword);
+    builder.Configuration["Kestrel:Certificates:Default:Password"] = decryptedPassword;
+}
 
 builder.Services.AddDbContext<Db>(opt => {
 
