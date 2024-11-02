@@ -67,6 +67,7 @@ if (builder.Environment.EnvironmentName == "Test")
     var section = builder.Configuration.GetSection("Kestrel:Certificates:Default");
     var encryptedPassword = section.GetValue<string>("Password");
     var decryptedPassword = Gaos.Encryption.EncryptionHelper.Decrypt(encryptedPassword);
+    Console.WriteLine($"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@        decryptedPassword: {decryptedPassword}");
     builder.Configuration["Kestrel:Certificates:Default:Password"] = decryptedPassword;
 }
 
