@@ -74,9 +74,10 @@ builder.Services.AddDbContext<Db>(opt => {
 
 
         opt.UseMySql(dbConnectionString, dbServerVersion)
-        .LogTo(Console.WriteLine, LogLevel.Information)
+        //.LogTo(Console.WriteLine, LogLevel.Information)
+        .LogTo(Console.WriteLine, LogLevel.Warning)
         //.LogTo(Console.WriteLine, LogLevel.Debug)
-        .EnableSensitiveDataLogging()
+        //.EnableSensitiveDataLogging()
         .EnableDetailedErrors();
     }
 );
@@ -85,6 +86,7 @@ builder.Services.AddMySqlDataSource(dbConnectionString);
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
+builder.Logging.ClearProviders();
 Log.Logger = new LoggerConfiguration()
     //.MinimumLevel.Debug()
     .MinimumLevel.Warning()
