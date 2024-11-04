@@ -289,9 +289,9 @@ SELECT
     g.Id AS memberGroupId,
     g.OwnerId AS memberGroupOwnerId,
     u.Name AS memberGroupOwnerName
-FROM groupp g
-JOIN groupmember gm ON g.Id = gm.GroupId
-JOIN user u ON g.OwnerId = u.Id
+FROM Groupp g
+JOIN GroupMember gm ON g.Id = gm.GroupId
+JOIN User u ON g.OwnerId = u.Id
 WHERE gm.UserId = @userId
 ";
             const string sqlQueryOwner =
@@ -299,9 +299,9 @@ $@"
 SELECT 
     g.Id AS ownedGroupId,
     g.Name AS ownedGroupName
-FROM groupp g
+FROM Groupp g
 WHERE g.OwnerId = @userId
-    AND EXISTS (SELECT 1 FROM groupmember gm WHERE gm.GroupId = g.Id)
+    AND EXISTS (SELECT 1 FROM GroupMember gm WHERE gm.GroupId = g.Id)
 ";
             try
             {
