@@ -222,6 +222,7 @@ namespace Gaos.wsrv
             const string METHOD_NAME = "CreateAndAddClientAsync()";
             const int CONNECTION_TIMEOUT = 5000;
             Socket client = null;
+            Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1600: CreateAndAddClientAsync()");
             try
             {
                 client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
