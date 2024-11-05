@@ -58,15 +58,18 @@ namespace Gaos.wsrv
         public async Task Init()
         {
             const string METHOD_NAME = "Init()";
+            Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1300: Init()");
             await initSemaphore.WaitAsync();
             try
             {
                 if (!isInitialized)
                 {
+                    Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1310: Init()");
                     // Initialize the client pool
                     var tasks = new List<Task<bool>>();
                     for (int i = 0; i < poolSize; i++)
                     {
+                        Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1330: Init()");
                         tasks.Add(CreateAndAddClientAsync());
                     }
                     await Task.WhenAll(tasks);
@@ -120,11 +123,14 @@ namespace Gaos.wsrv
         public async Task EnsureConnections()
         {
             const string METHOD_NAME = "EnsureConnections()";
+            Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1500: EnsureConnections()");
             await ensureConnectionsSemathore.WaitAsync();
+            Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1510: EnsureConnections()");
             try
             {
 
                 EvictConnections();
+                Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1520: EnsureConnections()");
 
                 var missingConnections = poolSize - clientPool.Count;
                 if (missingConnections <= 0)
