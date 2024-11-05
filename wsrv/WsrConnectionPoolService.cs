@@ -74,6 +74,7 @@ namespace Gaos.wsrv
                     }
                     await Task.WhenAll(tasks);
                     isInitialized = true;
+                    Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1340: FINISHED: Init()");
                     Log.Information($"{CLASS_NAME}:{METHOD_NAME}: Client pool initialized, current pool size {clientPool.Count}");
                 }
             }
@@ -94,7 +95,9 @@ namespace Gaos.wsrv
                 return;
             }
 
+            Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1200");
             await Init();
+            Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1210:  starting timer CheckConnections");
 
 
             // Start the periodic connection check
