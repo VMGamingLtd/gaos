@@ -45,10 +45,12 @@ namespace Gaos.wsrv
             }
             if (configuration["gaow_connect"] == "true")
             {
+                Log.Error($"{CLASS_NAME}: @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 450: gaow_connect is true");
                 isConnectToGaow = true;
             }
             else
             {
+                Log.Error($"{CLASS_NAME}: @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 450: gaow_connect is false");
                 isConnectToGaow = false;
             }
         }

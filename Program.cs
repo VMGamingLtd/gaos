@@ -190,12 +190,14 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =
 // Change this from AddHostedService to AddSingleton
 builder.Services.AddSingleton<Gaos.wsrv.WsrConnectionPoolService>(provider =>
 {
+    Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 100: AddSingleton()");
     Gaos.wsrv.WsrConnectionPoolService wsrConnectionPoolService = new Gaos.wsrv.WsrConnectionPoolService(builder.Configuration);
     return wsrConnectionPoolService;
 });
 
 // Add this line to register the hosted service
 builder.Services.AddHostedService<Gaos.wsrv.WsrConnectionPoolService>( provider => {
+    Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 110: AddHostedService()");
     Gaos.wsrv.WsrConnectionPoolService wsrConnectionPoolService = provider.GetRequiredService<Gaos.wsrv.WsrConnectionPoolService>();
     return wsrConnectionPoolService;
 });
