@@ -14,6 +14,7 @@ set +x
 # put public and private key in new pkcs12 keystore 
 set -x
 openssl pkcs12 -export -out certs/key_store.pfx -inkey certs/key.pem -in certs/cert.crt
+rm certs/key.pem
 set +x
 
 # to list the keystore (you must specify password to encrypt the displayed private key)
