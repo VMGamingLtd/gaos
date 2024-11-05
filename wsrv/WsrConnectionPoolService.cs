@@ -136,6 +136,7 @@ namespace Gaos.wsrv
                 Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1520: EnsureConnections()");
 
                 var missingConnections = poolSize - clientPool.Count;
+                Log.Error($"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1530: EnsureConnections(): missing connection: {missingConnections}");
                 if (missingConnections <= 0)
                 {
                     return;
@@ -146,13 +147,17 @@ namespace Gaos.wsrv
 
                 for (int i = 0; i < missingConnections; i++)
                 {
+                    Log.Error($"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1540: EnsureConnections()");
                     tasks.Add(Task.Run(async () =>
                     {
+                        Log.Error($"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1550: EnsureConnections()");
                         await CreateAndAddClientAsync();
                     }));
                 }
 
+                Log.Error($"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1560: EnsureConnections()");
                 await Task.WhenAll(tasks);
+                Log.Error($"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1570: EnsureConnections()");
 
                 Log.Information($"{CLASS_NAME}:{METHOD_NAME}: Finished adding connections. New pool size: {clientPool.Count}");
             }
