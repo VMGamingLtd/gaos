@@ -45,12 +45,10 @@ namespace Gaos.wsrv
             }
             if (configuration["gaow_connect"] == "true")
             {
-                Log.Error($"{CLASS_NAME}: @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 450: gaow_connect is true");
                 isConnectToGaow = true;
             }
             else
             {
-                Log.Error($"{CLASS_NAME}: @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 450: gaow_connect is false");
                 isConnectToGaow = false;
             }
         }
@@ -58,23 +56,19 @@ namespace Gaos.wsrv
         public async Task Init()
         {
             const string METHOD_NAME = "Init()";
-            Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1300: Init()");
             await initSemaphore.WaitAsync();
             try
             {
                 if (!isInitialized)
                 {
-                    Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1310: Init()");
                     // Initialize the client pool
                     var tasks = new List<Task<bool>>();
                     for (int i = 0; i < poolSize; i++)
                     {
-                        Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1330: Init()");
                         tasks.Add(CreateAndAddClientAsync());
                     }
                     await Task.WhenAll(tasks);
                     isInitialized = true;
-                    Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1340: FINISHED: Init()");
                     Log.Information($"{CLASS_NAME}:{METHOD_NAME}: Client pool initialized, current pool size {clientPool.Count}");
                 }
             }
@@ -95,9 +89,7 @@ namespace Gaos.wsrv
                 return;
             }
 
-            Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1200");
             await Init();
-            Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1210:  starting timer CheckConnections");
 
 
             // Start the periodic connection check
@@ -126,17 +118,13 @@ namespace Gaos.wsrv
         public async Task EnsureConnections()
         {
             const string METHOD_NAME = "EnsureConnections()";
-            Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1500: EnsureConnections()");
             await ensureConnectionsSemathore.WaitAsync();
-            Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1510: EnsureConnections()");
             try
             {
 
                 EvictConnections();
-                Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1520: EnsureConnections()");
 
                 var missingConnections = poolSize - clientPool.Count;
-                Log.Error($"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1530: EnsureConnections(): missing connection: {missingConnections}");
                 if (missingConnections <= 0)
                 {
                     return;
@@ -147,17 +135,13 @@ namespace Gaos.wsrv
 
                 for (int i = 0; i < missingConnections; i++)
                 {
-                    Log.Error($"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1540: EnsureConnections()");
                     tasks.Add(Task.Run(async () =>
                     {
-                        Log.Error($"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1550: EnsureConnections()");
                         await CreateAndAddClientAsync();
                     }));
                 }
 
-                Log.Error($"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1560: EnsureConnections()");
                 await Task.WhenAll(tasks);
-                Log.Error($"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1570: EnsureConnections()");
 
                 Log.Information($"{CLASS_NAME}:{METHOD_NAME}: Finished adding connections. New pool size: {clientPool.Count}");
             }
@@ -227,7 +211,6 @@ namespace Gaos.wsrv
             const string METHOD_NAME = "CreateAndAddClientAsync()";
             const int CONNECTION_TIMEOUT = 5000;
             Socket client = null;
-            Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 1600: CreateAndAddClientAsync()");
             try
             {
                 client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
@@ -268,7 +251,6 @@ namespace Gaos.wsrv
             {
                 return false;
             }
-            Log.Information($"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 100: SendDataAsync({message.Length}): sending...");
             const string METHOD_NAME = "SendDataAsync()";
             /*
             await initSemaphore.WaitAsync();
@@ -308,7 +290,6 @@ namespace Gaos.wsrv
                             // Return client to pool
                             clientPool.Add(client);
                             retries = 0;
-                            Log.Information($"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 200: SendDataAsync(): data sent");
                         }
                         catch (OperationCanceledException)
                         {
