@@ -10,6 +10,7 @@ namespace Gaos.Seed
             User.Seed(modelBuilder, configuration, environment);
             JWT.Seed(modelBuilder, configuration, environment);
             Leaderboard.Seed(modelBuilder, configuration, environment);
+            News.Seed(modelBuilder, configuration, environment);
         }
     }
 }
