@@ -88,10 +88,13 @@ namespace Gaos.Routes
                     {
 
 
+                        Stopwatch stopwatch = Stopwatch.StartNew();
+
                         var response = new AddCreditsResponse();
 
                         var user = userService.GetUser();
                         var group = await userService.GetUserGroup();
+                        Log.Information($"{CLASS_NAME}:{METHOD_NAME}: @@@@@@@@@@@@@@@@@@@@@@@@@ cp 100: userService.GetUserGroup(): {stopwatch.ElapsedMilliseconds}");
                         if (group == null)
                         {
                             Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: no group");
@@ -119,6 +122,7 @@ namespace Gaos.Routes
                         // Get entry from GroupCredits fro the user and group
                         // Read all records from GroupCredits for given user and group
                         var groupCreditsList = await db.GroupCredits.Where(x => x.UserId == user.Id && x.GroupId == groupId).ToListAsync();
+                        Log.Information($"{CLASS_NAME}:{METHOD_NAME}: @@@@@@@@@@@@@@@@@@@@@@@@@ cp 200: {stopwatch.ElapsedMilliseconds}");
                         float totalCredits = 0;
                         if (groupCreditsList.Count == 0)
                         {
@@ -131,6 +135,7 @@ namespace Gaos.Routes
                             };
                             db.GroupCredits.Add(groupCredits);
                             await db.SaveChangesAsync();
+                            Log.Information($"{CLASS_NAME}:{METHOD_NAME}: @@@@@@@@@@@@@@@@@@@@@@@@@ cp 300: {stopwatch.ElapsedMilliseconds}");
                             totalCredits = request.Credits;
 
                         }
@@ -140,11 +145,14 @@ namespace Gaos.Routes
                             groupCreditsList[0].Credits += request.Credits;
                             await db.SaveChangesAsync();
                             totalCredits = groupCreditsList[0].Credits;
+                            Log.Information($"{CLASS_NAME}:{METHOD_NAME}: @@@@@@@@@@@@@@@@@@@@@@@@@ cp 310: {stopwatch.ElapsedMilliseconds}");
                         }
                         transaction.Commit();
+                        Log.Information($"{CLASS_NAME}:{METHOD_NAME}: @@@@@@@@@@@@@@@@@@@@@@@@@ cp 400: {stopwatch.ElapsedMilliseconds}");
 
                         // Broadcast the new credits to the group
                         bool wasSent = await groupBroadcastService.BroadcastCreditsChangeAsync(user.Id, groupId, totalCredits);
+                        Log.Information($"{CLASS_NAME}:{METHOD_NAME}: @@@@@@@@@@@@@@@@@@@@@@@@@ cp 500: {stopwatch.ElapsedMilliseconds}");
                         if (!wasSent)
                         {
                             Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: error broadcasting credits change");
