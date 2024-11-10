@@ -3,10 +3,10 @@
     public class NewsData
     {
         public int Id { get; set; }
-        public string ImageName { get; set; } = string.Empty;
-        public string Title { get; set; } = string.Empty;
-        public string Headline { get; set; } = string.Empty;
-        public string Details { get; set; } = string.Empty;
-        public string Link { get; set; } = string.Empty;
+        public string ImageName { get; set; }
+        public string Title { get; set; }
+        public string Headline { get; set; }
+        public string Details { get; set; }
+        public string Link { get; set; }
     }
 }
