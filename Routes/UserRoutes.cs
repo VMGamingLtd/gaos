@@ -482,8 +482,8 @@ namespace Gaos.Routes
                                 DeviceId = device.Id,
                                 EmailVerificationCode = Guid.NewGuid().ToString(),
                                 IsEmailVerified = false,
-                                Language = registerRequest.Language,
-                                Country = registerRequest.Country,
+                                //Language = registerRequest.Language,
+                                //Country = registerRequest.Country,
                             };
                             await db.User.AddAsync(user);
                             await db.SaveChangesAsync();
