@@ -35,6 +35,7 @@
         public DbSet<UserInterfaceColors> UserInterfaceColors => Set<UserInterfaceColors>();
         public DbSet<GroupCredits> GroupCredits => Set<GroupCredits>();
         public DbSet<LeaderboardData> LeaderboardData => Set<LeaderboardData>();
+        public DbSet<NewsData> NewsData => Set<NewsData>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -140,6 +141,9 @@
             // LeaderboardData
             modelBuilder.Entity<LeaderboardData>().HasKey(e => e.Id);
             modelBuilder.Entity<LeaderboardData>().HasIndex(e => e.UserId).IsUnique(true);
+
+            // Website News data
+            modelBuilder.Entity<NewsData>().HasKey(e => e.Id);
 
             Gaos.Seed.SeedAll.Seed(modelBuilder, Configuration, Environment);
         }

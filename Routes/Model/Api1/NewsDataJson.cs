@@ -1,6 +1,6 @@
-﻿namespace gaos.Routes.Model.LeaderboardDataJson
+﻿namespace Gaos.Routes.Model.Api1
 {
-    public class LeaderboardDataGetResponse
+    public class NewsDataJson
     {
         public bool Error { get; set; }
         public string? ErrorMessage { get; set; }

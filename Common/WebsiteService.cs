@@ -1,4 +1,4 @@
-﻿using gaos.Routes.Model.LeaderboardDataJson;
+﻿using Gaos.Routes.Model.WebsiteDataJson;
 using Gaos.Dbo;
 using Gaos.Dbo.Model;
 using Microsoft.EntityFrameworkCore;
@@ -7,12 +7,12 @@ using Serilog;
 
 namespace Gaos.Common
 {
-    public class LeaderboardService
+    public class WebsiteService
     {
-        private static string CLASS_NAME = typeof(LeaderboardService).Name;
+        private static string CLASS_NAME = typeof(WebsiteService).Name;
         private Gaos.Dbo.Db Db;
 
-        public LeaderboardService(Gaos.Dbo.Db db)
+        public WebsiteService(Gaos.Dbo.Db db)
         {
             Db = db;
         }
@@ -35,6 +35,56 @@ namespace Gaos.Common
                     response.Error = false;
                     response.ErrorMessage = "";
                     response.LeaderboardDataJson = jsonString;
+                }
+                else
+                {
+                    response.Error = true;
+                    response.ErrorMessage = "No data found";
+                }
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
+                throw new Exception("failed to get Leaderboard data");
+            }
+        }
+
+        public async Task UpdateNewsData(NewsData data)
+        {
+            const string METHOD_NAME = "UpdateNewsData()";
+
+            try
+            {
+                await Db.NewsData.AddAsync(data);
+                await Db.SaveChangesAsync();
+
+                Log.Information($"{CLASS_NAME}:{METHOD_NAME} updated Website News data with Id {data.Id}");
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, $"{CLASS_NAME}:{METHOD_NAME} failed to update News data with Id {data.Id}");
+                throw new Exception("failed to update News data with Id {data.Id}");
+            }
+        }
+
+        public async Task<NewsDataGetResponse> GetNewsDataAsync()
+        {
+            const string METHOD_NAME = "GetNewsDataAsync()";
+
+            try
+            {
+                List<NewsData> newsEntries = await Db.NewsData.OrderByDescending(x => x.Id)
+                                                              .ToListAsync();
+                NewsDataGetResponse response = new();
+
+                if (newsEntries.Count > 0)
+                {
+                    string jsonString = JsonConvert.SerializeObject(newsEntries, Formatting.Indented);
+                    response.Error = false;
+                    response.ErrorMessage = "";
+                    response.NewsDataJson = jsonString;
                 }
                 else
                 {

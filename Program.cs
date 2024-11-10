@@ -130,10 +130,10 @@ builder.Services.AddScoped<Gaos.Common.UserService>(provider =>
     return new Gaos.Common.UserService(context, tokenService, db, dataSource);
 });
 
-builder.Services.AddScoped<Gaos.Common.LeaderboardService>(provider =>
+builder.Services.AddScoped<Gaos.Common.WebsiteService>(provider =>
 {
     Gaos.Dbo.Db db = provider.GetService<Gaos.Dbo.Db>();
-    return new Gaos.Common.LeaderboardService(db);
+    return new Gaos.Common.WebsiteService(db);
 });
 
 builder.Services.AddScoped<Gaos.Mongo.MongoService>(provider =>
