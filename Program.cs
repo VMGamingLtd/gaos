@@ -91,7 +91,7 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Debug()
     //.MinimumLevel.Warning()
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Warning)
-    .WriteTo.Console()
+    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss.fff} {Level:u3}] {Message:lj}{NewLine}{Exception}")
     .WriteTo.Debug()
     .CreateLogger();
 builder.Host.UseSerilog();
@@ -110,8 +110,8 @@ builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddScoped<Gaos.Auth.TokenService>(provider =>
 {
-    Db db = provider.GetService<Db>();
-    return new Gaos.Auth.TokenService(builder.Configuration, db);
+    MySqlDataSource dataSource = provider.GetService<MySqlDataSource>();
+    return new Gaos.Auth.TokenService(builder.Configuration, dataSource);
 });
 
 builder.Services.AddScoped<Gaos.Common.GuestService>(provider =>
@@ -133,7 +133,8 @@ builder.Services.AddScoped<Gaos.Common.UserService>(provider =>
 builder.Services.AddScoped<Gaos.Common.WebsiteService>(provider =>
 {
     Gaos.Dbo.Db db = provider.GetService<Gaos.Dbo.Db>();
-    return new Gaos.Common.WebsiteService(db);
+    MySqlDataSource dataSource = provider.GetService<MySqlDataSource>();
+    return new Gaos.Common.WebsiteService(db, dataSource);
 });
 
 builder.Services.AddScoped<Gaos.Mongo.MongoService>(provider =>
@@ -190,14 +191,12 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =
 // Change this from AddHostedService to AddSingleton
 builder.Services.AddSingleton<Gaos.wsrv.WsrConnectionPoolService>(provider =>
 {
-    Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 100: AddSingleton()");
     Gaos.wsrv.WsrConnectionPoolService wsrConnectionPoolService = new Gaos.wsrv.WsrConnectionPoolService(builder.Configuration);
     return wsrConnectionPoolService;
 });
 
 // Add this line to register the hosted service
 builder.Services.AddHostedService<Gaos.wsrv.WsrConnectionPoolService>( provider => {
-    Log.Error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 110: AddHostedService()");
     Gaos.wsrv.WsrConnectionPoolService wsrConnectionPoolService = provider.GetRequiredService<Gaos.wsrv.WsrConnectionPoolService>();
     return wsrConnectionPoolService;
 });
@@ -213,8 +212,8 @@ var app = builder.Build();
 
 
 app.UseMiddleware<CookieMiddleware>();
-app.UseWebSockets();
-app.UseMiddleware<WebSocketMiddleware>();
+//app.UseWebSockets();
+//app.UseMiddleware<WebSocketMiddleware>();
 app.UseMiddleware<AuthMiddleware>();
 
 
@@ -222,6 +221,7 @@ app.Map("/", (IConfiguration configuration) =>
 {
     return Results.Ok("hello!");
 });
+
 app.MapGroup("/user").GroupUser();
 app.MapGroup("/device").GroupDevice();
 app.MapGroup("/api").GroupApi();
@@ -231,4 +231,5 @@ app.MapGroup("/api/groupData").GroupData();
 app.MapGroup("/api/groupData1").GroupData1();
 app.MapGroup("/api/chatRoom").GroupChatRoom();
 app.MapGroup("/api/friends").GroupFriends();
+
 app.Run();

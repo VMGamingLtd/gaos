@@ -11,6 +11,7 @@ using Gaos.Dbo.Model;
 using MySqlConnector;
 using System.Security.Cryptography.X509Certificates;
 using Org.BouncyCastle.Security;
+using System.Diagnostics;
 
 namespace Gaos.Routes
 {
@@ -251,6 +252,9 @@ where
                 const string METHOD_NAME = "friends/getMyGroup";
                 try
                 {
+                    // start stop watch
+                    Stopwatch stopwatch = new Stopwatch();
+
                     var myGroup = await userService.GetUserGroup();
                     if (myGroup != null)
                     {
@@ -266,6 +270,9 @@ where
                             GroupOwnerName = myGroup.GroupOwnerName,
                         };
 
+                        stopwatch.Stop();
+                        Log.Debug($"{CLASS_NAME}:{METHOD_NAME}:  took {stopwatch.ElapsedMilliseconds} ms");
+
                         return Results.Json(response);
                     }
                     else
@@ -278,6 +285,9 @@ where
                             IsGroupOwner = false,
                             IsGroupMember = false,
                         };
+
+                        stopwatch.Stop();
+                        Log.Debug($"{CLASS_NAME}:{METHOD_NAME}: took {stopwatch.ElapsedMilliseconds} ms");
 
                         return Results.Json(response);
                     }
