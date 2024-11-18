@@ -20,8 +20,7 @@ namespace Gaos.Routes
         public static RouteGroupBuilder GroupData1(this RouteGroupBuilder group)
         {
 
-            group.MapPost("/getCredits", async (GetCreditsRequest request, Db db, Gaos.Common.UserService userService, 
-                GroupData groupDataService, IConfiguration configuration) =>
+            group.MapPost("/getCredits", async (GetCreditsRequest request, Db db, Gaos.Common.UserService userService, GroupData groupDataService, IConfiguration configuration) =>
             {
                 const string METHOD_NAME = "getCredits()";
                 try
@@ -74,12 +73,7 @@ namespace Gaos.Routes
                 }
             });
 
-            group.MapPost("/addMyCredits", async (AddCreditsRequest request, 
-                Db db, 
-                Gaos.Common.UserService userService,
-                GroupData groupDataService, 
-                IConfiguration configuration,
-                Gaos.wsrv.messages.GroupBroadcastService groupBroadcastService) =>
+            group.MapPost("/addMyCredits", async (AddCreditsRequest request, Db db, Gaos.Common.UserService userService, GroupData groupDataService, IConfiguration configuration, Gaos.wsrv.messages.GroupBroadcastService groupBroadcastService) =>
             {
                 const string METHOD_NAME = "addMyCredits()";
                 using (var transaction = db.Database.BeginTransaction())
@@ -176,12 +170,7 @@ namespace Gaos.Routes
                 }
             });
 
-            group.MapPost("/resetMyCredits", async (ResetCreditsRequest request, 
-                Db db, 
-                Gaos.Common.UserService userService,
-                GroupData groupDataService, 
-                IConfiguration configuration,
-                Gaos.wsrv.messages.GroupBroadcastService groupBroadcastService) =>
+            group.MapPost("/resetMyCredits", async (ResetCreditsRequest request, Db db, Gaos.Common.UserService userService, GroupData groupDataService, IConfiguration configuration, Gaos.wsrv.messages.GroupBroadcastService groupBroadcastService) =>
             {
                 const string METHOD_NAME = "resetMyCredits()";
                 using (var transaction = db.Database.BeginTransaction())

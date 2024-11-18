@@ -230,6 +230,6 @@ app.MapGroup("/api/gameData").GameData();
 app.MapGroup("/api/groupData").GroupData();
 app.MapGroup("/api/groupData1").GroupData1();
 app.MapGroup("/api/chatRoom").GroupChatRoom();
-app.MapGroup("/api/friends").GroupFriends();
+app.MapGroup("/api/groups").GroupFriends();
 
 app.Run();

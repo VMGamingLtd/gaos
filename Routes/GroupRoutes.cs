@@ -16,11 +16,11 @@ using System.Diagnostics;
 namespace Gaos.Routes
 {
 
-    public static class FriendsRoutes
+    public static class GroupRoutes
     {
         public static int MAX_NUMBER_OF_MESSAGES_IN_ROOM = 100;
 
-        public static string CLASS_NAME = typeof(FriendsRoutes).Name;
+        public static string CLASS_NAME = typeof(GroupRoutes).Name;
 
         public class getMyFriends_GroupMemberQqueryResult
         {

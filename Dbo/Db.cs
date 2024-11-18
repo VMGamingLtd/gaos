@@ -55,8 +55,8 @@
             // UserFriend
             modelBuilder.Entity<UserFriend>().HasKey(e => e.Id);
             modelBuilder.Entity<UserFriend>().HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
-            modelBuilder.Entity<UserFriend>().HasOne(e => e.FriendUser).WithMany().HasForeignKey(e => e.FriendUserId);
-            modelBuilder.Entity<UserFriend>().HasIndex(e => new { e.UserId, e.FriendUserId }).IsUnique(true);
+            modelBuilder.Entity<UserFriend>().HasOne(e => e.Friend).WithMany().HasForeignKey(e => e.FriendId);
+            modelBuilder.Entity<UserFriend>().HasIndex(e => new { e.UserId, e.FriendId }).IsUnique(true);
 
             // UserVerificationCode
             modelBuilder.Entity<UserVerificationCode>().HasKey(e => e.Id);
