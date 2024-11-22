@@ -4,7 +4,6 @@ using System.Security.Cryptography;
 using Jose;
 using Serilog;
 using Gaos.Dbo;
-using MySqlConnector;
 
 namespace Gaos.Auth
 {
@@ -34,16 +33,14 @@ namespace Gaos.Auth
         private static RSA? publicKey = null;
         private IConfiguration Configuration;
         private string pkcs12KeyStoreFilePath;
-        private static string keyStorePassword = null;
+        private string keyStorePassword;
 
-        //private Db db;
-        private MySqlDataSource dataSource; 
+        private Db db;
 
-        public TokenService(IConfiguration configuration, MySqlDataSource dataSource)
+        public TokenService(IConfiguration configuration, Db db)
         {
             this.Configuration = configuration;
-            //this.db = db;
-            this.dataSource = dataSource;
+            this.db = db;
 
             if (Configuration["pkcs12_key_store_file_path"] == null)
             {
@@ -55,12 +52,9 @@ namespace Gaos.Auth
             {
                 throw new Exception("missing configuration value: pkcs12_key_store_file_path");
             }
-            
             string keyStorePasswordEncrypted = Configuration.GetValue<string>("key_store_password");
-            if (keyStorePassword == null)
-            {
-                keyStorePassword = Gaos.Encryption.EncryptionHelper.Decrypt(keyStorePasswordEncrypted);
-            }
+            this.keyStorePassword = Gaos.Encryption.EncryptionHelper.Decrypt(keyStorePasswordEncrypted);
+
         }
 
         private string GetPkcs12KeyStoreFilePath()
@@ -70,7 +64,7 @@ namespace Gaos.Auth
 
         private string GetKeyStorePassword()
         {
-            return keyStorePassword;
+            return this.keyStorePassword;
         }
 
         private string GenerateJWT(RSA privateKey, string username, int userId, int deviceId, long validitySeconds, Gaos.Model.Token.UserType userType)  
@@ -99,10 +93,8 @@ namespace Gaos.Auth
             string jwtStr;
 
             // Remove all tokens for the device.
-            /*
             db.JWT.RemoveRange(db.JWT.Where(t => t.DeviceId == deviceId));
             db.SaveChanges();
-            */
 
             if (privateKey == null) { 
                 privateKey = RSAKeys.ReadPrivateKey(GetPkcs12KeyStoreFilePath(), GetKeyStorePassword());
@@ -118,46 +110,19 @@ namespace Gaos.Auth
 
             if (userType == Gaos.Model.Token.UserType.RegisteredUser)
             {
+                Gaos.Dbo.Model.JWT jwt = new Gaos.Dbo.Model.JWT
                 {
-                    using var connection = dataSource.OpenConnection();
-
-                    using var command_rm = connection.CreateCommand();
-                    command_rm.CommandText = "DELETE FROM Jwt WHERE DeviceId = @deviceId";
-                    command_rm.Parameters.AddWithValue("@deviceId", deviceId);
-                    command_rm.ExecuteNonQuery();
-
-
-                    using var command = connection.CreateCommand();
-                    command.CommandText = @"
-                        INSERT INTO Jwt (Token, UserId, DeviceId, CreatedAt, ExpiresAt)
-                        VALUES (@token, @userId, @deviceId, NOW(), DATE_ADD(NOW(), INTERVAL @validitySeconds SECOND));
-                        SELECT LAST_INSERT_ID();";
-
-                    command.Parameters.AddWithValue("@token", jwtStr);
-                    command.Parameters.AddWithValue("@userId", userId);
-                    command.Parameters.AddWithValue("@deviceId", deviceId);
-                    command.Parameters.AddWithValue("@validitySeconds", validitySeconds);
-                    
-                    var result = command.ExecuteScalar();
-                    int jwtId;
-                    if (result == null)
-                    {
-                        Log.Error($"{CLASS_NAME}:{METHOD_NAME} Could not insert JWT into database: result is null");
-                        throw new Exception("Could not insert JWT into database: result is null");
-                    }
-                    else
-                    if (!int.TryParse(result.ToString(), out jwtId))
-                    {
-                        Log.Error($"{CLASS_NAME}:{METHOD_NAME} Could not insert JWT into database: could not parse result to int");
-                        throw new Exception("Could not insert JWT into database: could not parse result to int");
-                    }
-                }
-
-
+                    Token = jwtStr,
+                    UserId = userId,
+                    CreatedAt = currentTime,
+                    ExpiresAt = currentTime.AddSeconds(validitySeconds),
+                    DeviceId = deviceId,
+                };
+                db.JWT.Add(jwt);
+                db.SaveChanges();
             }
             else if (userType == Gaos.Model.Token.UserType.GuestUser)
             {
-                /*
                 Gaos.Dbo.Model.JWT jwt = new Gaos.Dbo.Model.JWT
                 {
                     Token = jwtStr,
@@ -166,42 +131,6 @@ namespace Gaos.Auth
                 };
                 db.JWT.Add(jwt);
                 db.SaveChanges();
-                */
-
-                {
-                    using var connection = dataSource.OpenConnection();
-
-                    using var command_rm = connection.CreateCommand();
-                    command_rm.CommandText = "DELETE FROM Jwt WHERE DeviceId = @deviceId";
-                    command_rm.Parameters.AddWithValue("@deviceId", deviceId);
-                    command_rm.ExecuteNonQuery();
-
-
-                    using var command = connection.CreateCommand();
-                    command.CommandText = @"
-                        INSERT INTO Jwt (Token, UserId, DeviceId, CreatedAt, ExpiresAt)
-                        VALUES (@token, @userId, @deviceId, NOW(), DATE_ADD(NOW(), INTERVAL @validitySeconds SECOND));
-                        SELECT LAST_INSERT_ID();";
-
-                    command.Parameters.AddWithValue("@token", jwtStr);
-                    command.Parameters.AddWithValue("@userId", userId);
-                    command.Parameters.AddWithValue("@deviceId", deviceId);
-                    command.Parameters.AddWithValue("@validitySeconds", validitySeconds);
-
-                    var result = command.ExecuteScalar();
-                    int jwtId;
-                    if (result == null)
-                    {
-                        Log.Error($"{CLASS_NAME}:{METHOD_NAME} Could not insert guest JWT into database: result is null");
-                        throw new Exception("Could not insert guest JWT into database: result is null");
-                    }
-                    else
-                    if (!int.TryParse(result.ToString(), out jwtId))
-                    {
-                        Log.Error($"{CLASS_NAME}:{METHOD_NAME} Could not insert guest JWT into database: could not parse result to int");
-                        throw new Exception("Could not insert guest JWT into database: could not parse result to int");
-                    }
-                }
             }
             else
             {

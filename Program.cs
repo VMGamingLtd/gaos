@@ -110,8 +110,9 @@ builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddScoped<Gaos.Auth.TokenService>(provider =>
 {
-    MySqlDataSource dataSource = provider.GetService<MySqlDataSource>();
-    return new Gaos.Auth.TokenService(builder.Configuration, dataSource);
+    //MySqlDataSource dataSource = provider.GetService<MySqlDataSource>();
+    Db db = provider.GetService<Db>();
+    return new Gaos.Auth.TokenService(builder.Configuration, db);
 });
 
 builder.Services.AddScoped<Gaos.Common.GuestService>(provider =>
