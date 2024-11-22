@@ -1,7 +1,7 @@
-﻿namespace Gaos.Routes.Model.FriendsJson
+﻿namespace Gaos.Routes.Model.GroupJson
 {
     [System.Serializable]
-    public class AddFriendRequest
+    public class RemoveFromGroupRequest
     {
         public int UserId { get; set; }
     }

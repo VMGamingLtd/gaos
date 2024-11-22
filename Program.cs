@@ -222,6 +222,45 @@ app.Map("/", (IConfiguration configuration) =>
     return Results.Ok("hello!");
 });
 
+app.Map("/test", (MySqlDataSource dataSource) =>
+{
+    {
+        using var connection = dataSource.OpenConnection();
+
+        using var command_rm = connection.CreateCommand();
+        command_rm.CommandText = "DELETE FROM Jwt WHERE DeviceId = @deviceId";
+        command_rm.Parameters.AddWithValue("@deviceId", 1);
+        command_rm.ExecuteNonQuery();
+
+
+        using var command = connection.CreateCommand();
+        command.CommandText = @"
+            INSERT INTO Jwt (Token, UserId, DeviceId, CreatedAt, ExpiresAt)
+            VALUES (@token, @userId, @deviceId, NOW(), DATE_ADD(NOW(), INTERVAL @validitySeconds SECOND));
+            SELECT LAST_INSERT_ID()";
+
+        command.Parameters.AddWithValue("@token", "bla bla");
+        command.Parameters.AddWithValue("@userId", 1);
+        command.Parameters.AddWithValue("@deviceId", 1);
+        command.Parameters.AddWithValue("@validitySeconds", 10);
+
+        var result = command.ExecuteScalar();
+        int jwtId;
+        if (result == null)
+        {
+            Log.Error($"Could not insert guest JWT into database: result is null");
+            throw new Exception("Could not insert guest JWT into database: result is null");
+        }
+        else
+        if (!int.TryParse(result.ToString(), out jwtId))
+        {
+            Log.Error($"Could not insert guest JWT into database: could not parse result to int");
+            throw new Exception("Could not insert guest JWT into database: could not parse result to int");
+        }
+    }
+    return Results.Ok("hello!");
+});
+
 app.MapGroup("/user").GroupUser();
 app.MapGroup("/device").GroupDevice();
 app.MapGroup("/api").GroupApi();

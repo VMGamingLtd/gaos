@@ -1,5 +1,5 @@
 ﻿#pragma warning disable 8632
-namespace Gaos.Routes.Model.FriendsJson
+namespace Gaos.Routes.Model.GroupJson
 {
     public class GetFriendRequestsResponseListItem
     {

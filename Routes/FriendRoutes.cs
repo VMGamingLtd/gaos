@@ -6,12 +6,13 @@ using System.Text.Json;
 using Serilog;
 using Gaos.Auth;
 using Gaos.Dbo;
-using Gaos.Routes.Model.FriendsJson;
+using Gaos.Routes.Model.GroupJson;
 using Gaos.Dbo.Model;
 using MySqlConnector;
 using System.Security.Cryptography.X509Certificates;
 using Org.BouncyCastle.Security;
 using System.Diagnostics;
+using gaos.Routes.Model.FriendJson;
 
 namespace Gaos.Routes
 {
@@ -22,46 +23,46 @@ namespace Gaos.Routes
 
         public static string CLASS_NAME = typeof(FriendRoutes).Name;
 
-        public record GetUsersForFriendsSearchResult(int UserId, string UserName, bool IsFriend, bool IsFriendRequest); 
+        public record GetUsersForFriendsSearchResult(int UserId, string UserName, bool IsFriend, bool IsFriendRequest);
 
-        public static async  Task<List<GetUsersForFriendsSearchResult>> GetUsersForFriendsSearch(MySqlDataSource dataSource, int userId, int maxCount, string userNamePattern)
+        public static async Task<List<GetUsersForFriendsSearchResult>> GetUsersForFriendsSearch(MySqlDataSource dataSource, int userId, int maxCount, string userNamePattern)
         {
             const string METHOD_NAME = "GetUsersForFriendsSearch()";
             // Select users and if selected user is already a friend of logged in user (identified by method parameter userId) then  FriendId will be not null and equal to the selected user id. 
             // The friedship to looged in user is determined via membership in group owned by logged in user, any group member is a friend of the group owner.
             var sqlQuery =
-@$"
-SELECT
-    u.Id AS UserId,
-    u.Name AS UserName,
-    CASE 
-        WHEN 
-            uf.Id IS NOT NULL AND (
-                (uf.UserId = @UserId AND  (uf.FriendIs IS NOT NULL AND uf.isFriendAgreement = 1) OR
-                (uf.FriendId = @UserId AND  (uf.UserId IS NOT NULL AND uf.isFriendAgreement = 1))   
-        THEN 1
-        ELSE 0
-    END AS IsMyFriend,
-    CASE 
-        WHEN uf.Id IS NOT NULL AND (uf.UserId = @UserId AND (uf.FriendId IS NOT NULL AND  uf.isFriendAgreement = 0) 
-        THEN 1
-        ELSE 0
-    END AS IsMyFriendRequest,
-    CASE 
-        WHEN uf.Id IS NOT NULL AND (uf.FriendId = @UserId AND (uf.UserId IS NOT NULL AND  uf.isFriendAgreement = 0) 
-        THEN 1
-        ELSE 0
-    END AS IsFriendRequestToMe
-FROM
-    User u
-LEFT JOIN
-    UserFriend uf 
-    ON (u.Id = uf.UserId) OR (u.Id = uf.FriendId)
-WHERE
-    u.Name LIKE @userNamePattern
-LIMIT 
-    @maxCount;
-";
+                @$"
+                SELECT
+                    u.Id AS UserId,
+                    u.Name AS UserName,
+                    CASE 
+                        WHEN 
+                            uf.Id IS NOT NULL AND (
+                                (uf.UserId = @UserId AND  (uf.FriendIs IS NOT NULL AND uf.isFriendAgreement = 1) OR
+                                (uf.FriendId = @UserId AND  (uf.UserId IS NOT NULL AND uf.isFriendAgreement = 1))   
+                        THEN 1
+                        ELSE 0
+                    END AS IsMyFriend,
+                    CASE 
+                        WHEN uf.Id IS NOT NULL AND (uf.UserId = @UserId AND (uf.FriendId IS NOT NULL AND  uf.isFriendAgreement = 0) 
+                        THEN 1
+                        ELSE 0
+                    END AS IsMyFriendRequest,
+                    CASE 
+                        WHEN uf.Id IS NOT NULL AND (uf.FriendId = @UserId AND (uf.UserId IS NOT NULL AND  uf.isFriendAgreement = 0) 
+                        THEN 1
+                        ELSE 0
+                    END AS IsFriendRequestToMe
+                FROM
+                    User u
+                LEFT JOIN
+                    UserFriend uf 
+                    ON (u.Id = uf.UserId) OR (u.Id = uf.FriendId)
+                WHERE
+                    u.Name LIKE @userNamePattern
+                LIMIT 
+                    @maxCount;
+                ";
             try
             {
                 string likePattern;
@@ -101,7 +102,7 @@ LIMIT
 
                 return result;
 
-            } 
+            }
             catch (Exception ex)
             {
                 Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
@@ -115,22 +116,32 @@ LIMIT
         {
             group.MapGet("/hello", (Db db) => "hello");
 
-            group.MapPost("/getMyGroup", async (GetMyGroupRequest getMyGroupReuest,  Gaos.Common.UserService userService) =>
+            group.MapPost("/getUsersForFriendsSearch", async (GetUsersForFriendsSearchRequest request, MySqlDataSource dataSource, Gaos.Common.UserService userService) =>
             {
-                const string METHOD_NAME = "friends/getMyGroup";
+                const string METHOD_NAME = "friends/getUsersForFriendsSearch";
                 try
                 {
-                    GetMyGroupResponse response = new GetMyGroupResponse
+                    var user = userService.GetUser();
+                    var usersForFriendsSearch = await GetUsersForFriendsSearch(dataSource, user.Id, request.MaxCount, request.UserNamePattern);
+
+                    GetUsersForFriendsSearchResponse response = new GetUsersForFriendsSearchResponse
                     {
-                        IsError = true,
-                        ErrorMessage = "internal error",
+                        IsError = false,
+                        Users = usersForFriendsSearch.Select(u => new UserForFriendsSearch
+                        {
+                            UserId = u.UserId,
+                            UserName = u.UserName,
+                            IsFriend = u.IsFriend,
+                            IsFriendRequest = u.IsFriendRequest
+                        }).ToArray()
                     };
+
                     return Results.Json(response);
                 }
                 catch (Exception ex)
                 {
                     Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
-                    GetMyGroupResponse response = new GetMyGroupResponse
+                    GetUsersForFriendsSearchResponse response = new GetUsersForFriendsSearchResponse
                     {
                         IsError = true,
                         ErrorMessage = "internal error",
@@ -139,9 +150,65 @@ LIMIT
                 }
             });
 
+            group.MapPost("/requestFriend", async (RequestFriendRequest request, Db db, Gaos.Common.UserService userService) =>
+            {
+                const string METHOD_NAME = "friends/requestFriend";
+                try
+                {
+                    int userId = userService.GetUserId();
+                    int friendId = request.UserId;
+
+                    // check if userId, friendId line is in UserFriend table
+                    var userFriend = await db.UserFriend.FirstOrDefaultAsync(uf => (uf.UserId == userId && uf.FriendId == friendId) || (uf.UserId == friendId && uf.FriendId == userId));
+                    if (userFriend == null)
+                    {
+                        // insert line
+                        var _userFriend = new UserFriend
+                        {
+                            UserId = userId,
+                            FriendId = friendId,
+                            IsFriendAgreement = false,
+                        };
+                        db.UserFriend.Add(_userFriend);
+                        db.SaveChanges();
+                    }
+                    else
+                    {
+                        if (userFriend.FriendId == friendId)
+                        {
+                            // Friend request from me to friend already exists amd possibly waiting for friend agreement.
+                            ;
+                        }
+                        else
+                        {
+                            // Friend request from friend to me already exists amd waiting for my agreement
+                            // So I just accept it.
+                            userFriend.IsFriendAgreement = true;
+                            // save changes
+                            db.SaveChanges();
+                        }
+                    }
+
+                    RequestFriendResponse response = new RequestFriendResponse
+                    {
+                        IsError = false,
+                        ErrorMessage = "",
+                    };
+                    return Results.Json(response);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
+                    RequestFriendResponse response = new RequestFriendResponse
+                    {
+                        IsError = true,
+                        ErrorMessage = "internal error",
+                    };
+                    return Results.Json(response);
+                }
+            });
 
             return group;
-
         }
     }
 }

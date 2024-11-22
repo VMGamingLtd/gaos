@@ -125,6 +125,11 @@ namespace Gaos.Common
                     Log.Error($"{CLASS_NAME}:{METHOD_NAME} user not found for token");
                     throw new Exception("user not found for token");
                 }
+                if (user.IsGuest == null)
+                {
+                    Log.Error($"{CLASS_NAME}:{METHOD_NAME} corrupted user (isGuest is null), user.id {user.Id}");
+                    throw new Exception("corrupted user (isGuest is null)");
+                }
                 var userType = (bool)user.IsGuest ? Gaos.Model.Token.UserType.GuestUser : Gaos.Model.Token.UserType.RegisteredUser;
                 var jwtStr = TokenService.GenerateJWT(
                     user.Name, user.Id, deviceId,

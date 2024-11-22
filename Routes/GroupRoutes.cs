@@ -6,7 +6,7 @@ using System.Text.Json;
 using Serilog;
 using Gaos.Auth;
 using Gaos.Dbo;
-using Gaos.Routes.Model.FriendsJson;
+using Gaos.Routes.Model.GroupJson;
 using Gaos.Dbo.Model;
 using MySqlConnector;
 using System.Security.Cryptography.X509Certificates;
@@ -249,7 +249,7 @@ where
 
             group.MapPost("/getMyGroup", async (GetMyGroupRequest getMyGroupReuest,  Gaos.Common.UserService userService) =>
             {
-                const string METHOD_NAME = "friends/getMyGroup";
+                const string METHOD_NAME = "groups/getMyGroup";
                 try
                 {
                     // start stop watch
@@ -306,7 +306,7 @@ where
 
             group.MapPost("/getUsersList", async (GetUsersListRequest getUsersListRequest, Db db, MySqlDataSource dataSource, Gaos.Common.UserService userService) =>
             {
-                const string METHOD_NAME = "friends/getUsersList";
+                const string METHOD_NAME = "groups/getUsersList";
                 try
                 {
                     int userId = userService.GetUserId();
@@ -377,7 +377,7 @@ where
 
             group.MapPost("/getMyGroupMembers", async (GetMyGroupMembersRequest getMyGroupMembersRequest, Db db, Gaos.Common.UserService userService) =>
             {
-                const string METHOD_NAME = "friends/getMyGroupMembers";
+                const string METHOD_NAME = "groups/getMyGroupMembers";
         
                 try
                 {
@@ -503,7 +503,7 @@ where
 
             group.MapPost("/addFriend", async (AddFriendRequest addFriendRequest, Db db, Gaos.Common.UserService userService) =>
             {
-                const string METHOD_NAME = "friends/addFriend";
+                const string METHOD_NAME = "groups/addFriend";
                 using (var transaction = db.Database.BeginTransaction())
                 {
                     try
@@ -644,7 +644,7 @@ where
 
             group.MapPost("/revokeFriendRequest", async (RevokeFriendRequestRequest revokeFriendRequestRequest, Db db, Gaos.Common.UserService userService) =>
             {
-                const string METHOD_NAME = "friends/revokeFriendRequest";
+                const string METHOD_NAME = "groups/revokeFriendRequest";
                 using (var transaction = db.Database.BeginTransaction())
                 {
                     try
@@ -706,7 +706,7 @@ where
 
             group.MapPost("/getFriendRequests", async (GetFriendRequestsRequest getFriendRequestsRequest, Db db, MySqlDataSource dataSource, Gaos.Common.UserService userService) =>
             {
-                const string METHOD_NAME = "friends/getFriwendRequests";
+                const string METHOD_NAME = "groups/getFriwendRequests";
                 using (var transaction = db.Database.BeginTransaction())
                 {
                     GetFriendRequestsResponse response;
@@ -773,7 +773,7 @@ where
 
             group.MapPost("/acceptFriendRequest", async (AcceptFriendRequestRequest acceptFriendRequest, Db db, Gaos.Common.UserService userService) =>
             {
-                const string METHOD_NAME = "friends/acceptFriendRequest";
+                const string METHOD_NAME = "groups/acceptFriendRequest";
                 using (var transaction = db.Database.BeginTransaction())
                 {
                     try
@@ -869,7 +869,7 @@ where
 
             group.MapPost("/rejectFriendRequest", async (RejectFriendRequestRequest rejectFriendRequest, Db db, Gaos.Common.UserService userService) =>
             {
-                const string METHOD_NAME = "friends/rejectFriendRequest";
+                const string METHOD_NAME = "groups/rejectFriendRequest";
                 using (var transaction = db.Database.BeginTransaction())
                 {
                     try
@@ -925,8 +925,9 @@ where
 
 
 
-            group.MapPost("/removeFromGroup", async (RemoveFromGroupRequest removeFromGroupRequest, Db db, Gaos.Common.UserService userService) => {
-                const string METHOD_NAME = "friends/removeFromGroup";
+            group.MapPost("/removeFromGroup", async (RemoveFromGroupRequest removeFromGroupRequest, Db db, Gaos.Common.UserService userService) => 
+            {
+                const string METHOD_NAME = "groups/removeFromGroup";
                 using (var transaction = db.Database.BeginTransaction())
                 {
                     try
@@ -992,7 +993,7 @@ where
 
             group.MapPost("/leaveGroup", async (LeaveGroupRequest leaveGroupRequest, Db db, Gaos.Common.UserService userService) =>
             {
-                const string METHOD_NAME = "friends/leaveGroup";
+                const string METHOD_NAME = "groups/leaveGroup";
                 using (var transaction = db.Database.BeginTransaction())
                 {
                     LeaveGroupResponse response;

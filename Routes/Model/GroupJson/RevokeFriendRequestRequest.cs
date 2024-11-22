@@ -1,4 +1,4 @@
-﻿namespace Gaos.Routes.Model.FriendsJson
+﻿namespace Gaos.Routes.Model.GroupJson
 {
     [System.Serializable]
     public class RevokeFriendRequestRequest

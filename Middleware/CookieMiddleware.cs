@@ -121,6 +121,7 @@ namespace Gaos.Middleware
                     INSERT INTO Session (CreatedAt, ExpiresdAt, AccessedAt) 
                     VALUES (NOW(), DATE_ADD(NOW(), INTERVAL 1000 YEAR), NOW());
                     SELECT LAST_INSERT_ID();";
+                command.CommandText = sql;
 
                 var result = await command.ExecuteScalarAsync();
                 if (result == null)

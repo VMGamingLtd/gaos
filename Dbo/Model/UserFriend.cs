@@ -9,6 +9,6 @@ namespace Gaos.Dbo.Model
         public User? User { get; set; }
         public int? FriendId { get; set; }
         public User? Friend { get; set; }
-        public bool? isFriendAgreement{ get; set; }
+        public bool? IsFriendAgreement{ get; set; }
     }
 }
