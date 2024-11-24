@@ -4,7 +4,7 @@ using jsondiff;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace gaos.Tests
+namespace Gaos.Tests
 {
     public class Test
     {

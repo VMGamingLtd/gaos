@@ -1,8 +1,7 @@
-﻿#pragma warning disable 8632
-namespace Gaos.Routes.Model.FriendJson
+﻿namespace Gaos.Routes.Model.FriendJson
 {
     [System.Serializable]
-    public class RequestFriendResponse
+    public class RemoveFriendResponse
     {
         public bool? IsError { get; set; }
         public string? ErrorMessage { get; set; }

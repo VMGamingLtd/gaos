@@ -1,5 +1,5 @@
 ﻿#pragma warning disable 8632
-namespace gaos.Routes.Model.FriendJson
+namespace Gaos.Routes.Model.FriendJson
 {
     [System.Serializable]
     public class RequestFriendRequest

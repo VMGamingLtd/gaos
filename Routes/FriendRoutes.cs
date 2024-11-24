@@ -12,7 +12,7 @@ using MySqlConnector;
 using System.Security.Cryptography.X509Certificates;
 using Org.BouncyCastle.Security;
 using System.Diagnostics;
-using gaos.Routes.Model.FriendJson;
+using Gaos.Routes.Model.FriendJson;
 
 namespace Gaos.Routes
 {
@@ -207,6 +207,32 @@ namespace Gaos.Routes
                     return Results.Json(response);
                 }
             });
+
+            group.MapPost("/removeFriend", async (RemoveFriendRequest request, Db db, Gaos.Common.UserService userService) =>
+            {
+                const string METHOD_NAME = "friends/removeFriend";
+                try
+                {
+                    int myUserId = userService.GetUserId();
+                    int myFriendId = request.UserId;
+
+                    var idsToRemove = await db.UserFriend.Where(uf => (uf.UserId == myUserId && uf.FriendId == myFriendId) || (uf.UserId == myFriendId && uf.FriendId == myUserId)).Select(uf => uf.Id).ToListAsync();
+                    db.UserFriend.RemoveRange(db.UserFriend.Where(uf => idsToRemove.Contains(uf.Id)));
+
+                    await db.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error:, {ex.Message}");
+                    RemoveFriendResponse response = new RemoveFriendResponse
+                    {
+                        IsError = true,
+                        ErrorMessage = "internal error",
+                    };
+                    return Results.Json(response);
+                }
+            });
+
 
             return group;
         }
