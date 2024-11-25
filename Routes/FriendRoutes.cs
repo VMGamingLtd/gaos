@@ -38,18 +38,19 @@ namespace Gaos.Routes
                     CASE 
                         WHEN 
                             uf.Id IS NOT NULL AND (
-                                (uf.UserId = @UserId AND  (uf.FriendIs IS NOT NULL AND uf.isFriendAgreement = 1) OR
+                                (uf.UserId = @UserId AND  (uf.FriendId IS NOT NULL AND uf.isFriendAgreement = 1)) OR
                                 (uf.FriendId = @UserId AND  (uf.UserId IS NOT NULL AND uf.isFriendAgreement = 1))   
+                            )
                         THEN 1
                         ELSE 0
                     END AS IsMyFriend,
                     CASE 
-                        WHEN uf.Id IS NOT NULL AND (uf.UserId = @UserId AND (uf.FriendId IS NOT NULL AND  uf.isFriendAgreement = 0) 
+                        WHEN uf.Id IS NOT NULL AND (uf.UserId = @UserId AND (uf.FriendId IS NOT NULL AND  uf.isFriendAgreement = 0))
                         THEN 1
                         ELSE 0
                     END AS IsMyFriendRequest,
                     CASE 
-                        WHEN uf.Id IS NOT NULL AND (uf.FriendId = @UserId AND (uf.UserId IS NOT NULL AND  uf.isFriendAgreement = 0) 
+                        WHEN uf.Id IS NOT NULL AND (uf.FriendId = @UserId AND (uf.UserId IS NOT NULL AND  uf.isFriendAgreement = 0)) 
                         THEN 1
                         ELSE 0
                     END AS IsFriendRequestToMe
@@ -88,14 +89,10 @@ namespace Gaos.Routes
                 {
                     var _UserId = reader.GetInt32(0);
                     var _UserName = reader.GetString(1);
-                    int? _FriendId = null;
-                    if (!reader.IsDBNull(2))
-                        _FriendId = reader.GetInt32(2);
-                    bool _IsFriend = _FriendId != null;
-                    int? _FriendRequestId = null;
-                    if (!reader.IsDBNull(3))
-                        _FriendRequestId = reader.GetInt32(3);
-                    bool _IsFriendRequest = _FriendRequestId != null;
+                    int _IsMyFriend = reader.GetInt32(2);
+                    bool _IsFriend = _IsMyFriend > 0;
+                    int _IsMyFriendRequest = reader.GetInt32(3);
+                    bool _IsFriendRequest = _IsMyFriendRequest > 0;
                     result.Add(new GetUsersForFriendsSearchResult(_UserId, _UserName, _IsFriend, _IsFriendRequest));
                 }
                 reader.Close();
@@ -220,6 +217,13 @@ namespace Gaos.Routes
                     db.UserFriend.RemoveRange(db.UserFriend.Where(uf => idsToRemove.Contains(uf.Id)));
 
                     await db.SaveChangesAsync();
+
+                    RemoveFriendResponse response = new RemoveFriendResponse
+                    {
+                        IsError = false,
+                        ErrorMessage = "",
+                    };
+                    return Results.Json(response);
                 }
                 catch (Exception ex)
                 {
