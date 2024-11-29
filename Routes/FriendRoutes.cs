@@ -61,13 +61,14 @@ namespace Gaos.Routes
                     ON (u.Id = uf.UserId) OR (u.Id = uf.FriendId)
                 WHERE
                     u.Name LIKE @userNamePattern
+                    and u.Id != @userId
                 LIMIT 
                     @maxCount;
                 ";
             try
             {
                 string likePattern;
-                if (userNamePattern == null)
+                if (userNamePattern == null || userNamePattern == "")
                 {
                     likePattern = "%";
                 }
@@ -75,8 +76,10 @@ namespace Gaos.Routes
                 {
                     likePattern = $"%{userNamePattern}%";
                 }
+
                 using var connection = await dataSource.OpenConnectionAsync();
-                await using var command = connection.CreateCommand();
+
+                using var command = connection.CreateCommand();
                 command.CommandText = sqlQuery;
                 command.Parameters.AddWithValue("@userId", userId);
                 command.Parameters.AddWithValue("@userNamePattern", $"%{likePattern}%");
@@ -107,6 +110,68 @@ namespace Gaos.Routes
             }
 
 
+        }
+
+        public record GetMyFriendsSearchResult(int UserId, string UserName);
+
+        public static async Task<List<GetMyFriendsSearchResult>> GetMyFriendsSearch(MySqlDataSource dataSource, int userId, int maxCount, string userNamePattern)
+        {
+            const string METHOD_NAME = "GetMyFriendsSearch()";
+            try
+            {
+                var sqlQuery =
+                    @$"
+                        SELECT
+                            u.Id AS UserId,
+                            u.Name AS UserName  
+                        FROM
+                            UserFriend uf
+                            JOIN User u ON (uf.UserId = u.Id OR uf.FriendId = u.Id)
+                        WHERE
+                            (uf.UserId = @UserId OR uf.FriendId = @UserId) AND uf.isFriendAgreement = 1
+                            AND u.Id != @UserId
+                            AND u.Name LIKE @userNamePattern
+                        LIMIT   
+                            @maxCount;
+                    ";
+
+                string likePattern;
+                if (userNamePattern == null || userNamePattern == "")
+                {
+                    likePattern = "%";
+                }
+                else
+                {
+                    likePattern = $"%{userNamePattern}%";
+                }
+
+                using var connection = await dataSource.OpenConnectionAsync();
+
+                using var command = connection.CreateCommand();
+                command.CommandText = sqlQuery;
+                command.Parameters.AddWithValue("@userId", userId);
+                command.Parameters.AddWithValue("@userNamePattern", likePattern);
+                command.Parameters.AddWithValue("@maxCount", maxCount);
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                List<GetMyFriendsSearchResult> result = new List<GetMyFriendsSearchResult>();
+                while (reader.Read())
+                {
+                    var _UserId = reader.GetInt32(0);
+                    var _UserName = reader.GetString(1);
+                    result.Add(new GetMyFriendsSearchResult(_UserId, _UserName));
+                }
+                reader.Close();
+
+                return result;
+
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
+                throw new Exception("internal error");
+            }
         }
 
         public static RouteGroupBuilder Friends(this RouteGroupBuilder group)
@@ -155,34 +220,38 @@ namespace Gaos.Routes
                     int userId = userService.GetUserId();
                     int friendId = request.UserId;
 
-                    // check if userId, friendId line is in UserFriend table
-                    var userFriend = await db.UserFriend.FirstOrDefaultAsync(uf => (uf.UserId == userId && uf.FriendId == friendId) || (uf.UserId == friendId && uf.FriendId == userId));
-                    if (userFriend == null)
+                    if (userId != friendId)
                     {
-                        // insert line
-                        var _userFriend = new UserFriend
+
+                        // check if userId, friendId line is in UserFriend table
+                        var userFriend = await db.UserFriend.FirstOrDefaultAsync(uf => (uf.UserId == userId && uf.FriendId == friendId) || (uf.UserId == friendId && uf.FriendId == userId));
+                        if (userFriend == null)
                         {
-                            UserId = userId,
-                            FriendId = friendId,
-                            IsFriendAgreement = false,
-                        };
-                        db.UserFriend.Add(_userFriend);
-                        db.SaveChanges();
-                    }
-                    else
-                    {
-                        if (userFriend.FriendId == friendId)
-                        {
-                            // Friend request from me to friend already exists amd possibly waiting for friend agreement.
-                            ;
+                            // insert line
+                            var _userFriend = new UserFriend
+                            {
+                                UserId = userId,
+                                FriendId = friendId,
+                                IsFriendAgreement = false,
+                            };
+                            db.UserFriend.Add(_userFriend);
+                            db.SaveChanges();
                         }
                         else
                         {
-                            // Friend request from friend to me already exists amd waiting for my agreement
-                            // So I just accept it.
-                            userFriend.IsFriendAgreement = true;
-                            // save changes
-                            db.SaveChanges();
+                            if (userFriend.FriendId == friendId)
+                            {
+                                // Friend request from me to friend already exists amd possibly waiting for friend agreement.
+                                ;
+                            }
+                            else
+                            {
+                                // Friend request from friend to me already exists amd waiting for my agreement
+                                // So I just accept it.
+                                userFriend.IsFriendAgreement = true;
+                                // save changes
+                                db.SaveChanges();
+                            }
                         }
                     }
 
@@ -229,6 +298,36 @@ namespace Gaos.Routes
                 {
                     Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error:, {ex.Message}");
                     RemoveFriendResponse response = new RemoveFriendResponse
+                    {
+                        IsError = true,
+                        ErrorMessage = "internal error",
+                    };
+                    return Results.Json(response);
+                }
+            });
+
+            group.MapPost("/getMyFriends", async (GetMyFriendsRequest request, MySqlDataSource dataSource, Gaos.Common.UserService userService) =>
+            {
+                const string METHOD_NAME = "friends/getMyFriends";
+                try
+                {
+                    var user = userService.GetUser();
+                    var myFriends = await GetMyFriendsSearch(dataSource, user.Id, request.MaxCount, request.UserNamePattern);
+                    GetMyFriendsResponse response = new GetMyFriendsResponse
+                    {
+                        IsError = false,
+                        Users = myFriends.Select(f => new UserForGetMyFriends
+                        {
+                            UserId = f.UserId,
+                            UserName = f.UserName
+                        }).ToArray()
+                    };
+                    return Results.Json(response);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
+                    GetMyFriendsResponse response = new GetMyFriendsResponse
                     {
                         IsError = true,
                         ErrorMessage = "internal error",

@@ -79,7 +79,7 @@ limit  @maxCount
             try
             {
                 string likePattern;
-                if (userNamePattern == null)
+                if (userNamePattern == null || userNamePattern == "")
                 {
                     likePattern = "%";
                 }
@@ -133,7 +133,7 @@ limit  @maxCount
         {
             const string METHOD_NAME = "GetRequestsForFriendRequestSearch()";
             string sqlQuery;
-            if (ownerNamePattern != null)
+            if (ownerNamePattern != null && ownerNamePattern != "")
             {
                 sqlQuery =
     @$"
