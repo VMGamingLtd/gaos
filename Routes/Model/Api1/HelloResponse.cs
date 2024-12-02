@@ -1,4 +1,4 @@
-﻿namespace gaos.Routes.Model.Api1
+﻿namespace Gaos.Routes.Model.Api1
 {
     public class HelloResponse
     {

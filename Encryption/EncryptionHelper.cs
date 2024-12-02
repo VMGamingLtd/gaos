@@ -11,8 +11,16 @@ namespace Gaos.Encryption
 
         public static string GetPasswordFileName()
         {
-            string homeFolderPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            return Path.Combine(homeFolderPath, "gao_password.txt");
+            string fileName =  Environment.GetEnvironmentVariable("GAOS_PASSWORD_FILE");
+            if (fileName != null)
+            {
+                return fileName;
+            }
+            else
+            {
+                string homeFolderPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                return Path.Combine(homeFolderPath, "gao_password.txt");
+            }
         }
 
         public static string GetPassword()

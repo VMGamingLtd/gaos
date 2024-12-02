@@ -223,7 +223,7 @@ namespace Gaos.wsrv
                     // Connection successful
                     await connectTask; // Ensure the task is completed
                     clientPool.Add(client);
-                    Log.Information($"{CLASS_NAME}:{METHOD_NAME}: Client connected and added to pool, pool size {clientPool.Count}");
+                    Log.Error($"{CLASS_NAME}:{METHOD_NAME}: INFO: Client connected and added to pool, pool size {clientPool.Count}");
                     return true;
                 }
                 else
@@ -251,7 +251,6 @@ namespace Gaos.wsrv
             {
                 return false;
             }
-            Log.Information($"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 100: SendDataAsync({message.Length}): sending...");
             const string METHOD_NAME = "SendDataAsync()";
             /*
             await initSemaphore.WaitAsync();
@@ -291,7 +290,6 @@ namespace Gaos.wsrv
                             // Return client to pool
                             clientPool.Add(client);
                             retries = 0;
-                            Log.Information($"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 200: SendDataAsync(): data sent");
                         }
                         catch (OperationCanceledException)
                         {

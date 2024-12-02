@@ -1,4 +1,4 @@
-﻿namespace gaos.WebSocket
+﻿namespace Gaos.WebSocket
 {
     public class Message
     {

@@ -1,6 +1,6 @@
 ﻿#pragma warning disable 8600, 8602 // Disable null check warnings for fields that are initialized in the constructor
 
-using gaos.Routes.Model.LeaderboardDataJson;
+using Gaos.Routes.Model.WebsiteDataJson;
 using Gaos.Dbo;
 using Gaos.Dbo.Model;
 using Gaos.Routes.Model.ApiJson;
@@ -59,7 +59,7 @@ namespace Gaos.Routes
 
             });
 
-            group.MapGet("/leaderboardDataGet", async (Gaos.Common.LeaderboardService leaderboardService) =>
+            group.MapGet("/leaderboardDataGet", async (Gaos.Common.WebsiteService websiteService) =>
             {
                 const string METHOD_NAME = "leaderboardDataGet()";
 
@@ -67,7 +67,7 @@ namespace Gaos.Routes
                 {
                     LeaderboardDataGetResponse response;
 
-                    var result = await leaderboardService.GetLeaderboardDataAsync();
+                    var result = await websiteService.GetLeaderboardDataAsync();
 
                     if (result.Error)
                     {
@@ -99,12 +99,65 @@ namespace Gaos.Routes
                 }
             });
 
-            group.MapPost("/updateLeaderboardData", async (LeaderboardData data, Gaos.Common.LeaderboardService leaderboardService) =>
+            group.MapPost("/updateLeaderboardData", async (LeaderboardData data, Gaos.Common.WebsiteService websiteService) =>
             {
                 try
                 {
-                    await leaderboardService.UpdateLeaderboardData(data);
+                    await websiteService.UpdateLeaderboardData(data);
                     return Results.Ok(new { success = true, message = "LeaderboardData updated successfully" });
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(new { success = false, message = ex.Message });
+                }
+            });
+
+            group.MapGet("/newsDataGet", async (Gaos.Common.WebsiteService websiteService) =>
+            {
+                const string METHOD_NAME = "newsDataGet()";
+
+                try
+                {
+                    NewsDataGetResponse response;
+
+                    var result = await websiteService.GetNewsDataAsync();
+
+                    if (result.Error)
+                    {
+                        response = new NewsDataGetResponse()
+                        {
+                            Error = true,
+                            ErrorMessage = result.ErrorMessage,
+                        };
+                        return Results.Json(response);
+                    }
+
+                    response = new NewsDataGetResponse()
+                    {
+                        Error = false,
+                        ErrorMessage = "",
+                        NewsDataJson = result.NewsDataJson,
+                    };
+                    return Results.Json(response);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
+                    LeaderboardDataGetResponse response = new()
+                    {
+                        Error = true,
+                        ErrorMessage = ex.Message,
+                    };
+                    return Results.Json(response);
+                }
+            });
+
+            group.MapPost("/updateNewsData", async (NewsData data, Gaos.Common.WebsiteService websiteService) =>
+            {
+                try
+                {
+                    await websiteService.UpdateNewsData(data);
+                    return Results.Ok(new { success = true, message = "NewsData updated successfully" });
                 }
                 catch (Exception ex)
                 {

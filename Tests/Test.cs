@@ -4,7 +4,7 @@ using jsondiff;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace gaos.Tests
+namespace Gaos.Tests
 {
     public class Test
     {
@@ -110,10 +110,19 @@ namespace gaos.Tests
 
         static void TestEncryptionHelper_1()
         {
-            string plaintext = "changeit";
+            string plaintext = "xxxxxxxxx";
 
             string encrypted = Gaos.Encryption.EncryptionHelper.Encrypt(plaintext);
             Console.WriteLine($"Encrypted: {encrypted}");
+
+            string decrypted = Gaos.Encryption.EncryptionHelper.Decrypt(encrypted);
+            Console.WriteLine($"Decrypted: {decrypted}");
+        }
+
+        static void TestEncryptionHelper_2()
+        {
+
+            string encrypted = "xxxxxxxxxxx";
 
             string decrypted = Gaos.Encryption.EncryptionHelper.Decrypt(encrypted);
             Console.WriteLine($"Decrypted: {decrypted}");
@@ -127,7 +136,8 @@ namespace gaos.Tests
                 //TestJsonIsEqual();
                 //TestMergeBug();
                 //TestEncryptionHelper();
-                TestEncryptionHelper_1();
+                //TestEncryptionHelper_1();
+                TestEncryptionHelper_2();
             }
         }
     }
