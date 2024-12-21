@@ -27,7 +27,7 @@ namespace Gaos.wsrv
 
         private bool isConnectToGaow = false;
 
-        public WsrConnectionPoolService(IConfiguration configuration, string ipAddress = "127.0.0.1", int port = 3000, int poolSize = 5)
+        public WsrConnectionPoolService(IConfiguration configuration, string ipAddress = "127.0.0.1", int port = 3010, int poolSize = 5)
         {
             this.ipAddress = ipAddress;
             this.port = port;
