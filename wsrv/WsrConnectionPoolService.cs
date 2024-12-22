@@ -1,4 +1,6 @@
-﻿using System;
+﻿#pragma warning disable 8600, 8622, 8618
+
+using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Net;
@@ -29,6 +31,7 @@ namespace Gaos.wsrv
 
         public WsrConnectionPoolService(IConfiguration configuration, string ipAddress = "127.0.0.1", int port = 3010, int poolSize = 5)
         {
+            const string METHOD_NAME = "WsrConnectionPoolService()";
             this.ipAddress = ipAddress;
             this.port = port;
             this.poolSize = poolSize;
@@ -41,11 +44,21 @@ namespace Gaos.wsrv
 
             if (configuration["gaow_connect"] == null)
             {
+                Log.Error($"{CLASS_NAME}:{METHOD_NAME}: missing configuration value: gaow_connect");
                 throw new Exception("missing configuration value: gaow_connect");
             }
             if (configuration["gaow_connect"] == "true")
             {
                 isConnectToGaow = true;
+                if (configuration["gaow_port"] != null)
+                {
+                    string portStr = configuration["gaow_port"];
+                    if (!int.TryParse(portStr, out this.port))
+                    {
+                        Log.Error($"{CLASS_NAME}:{METHOD_NAME}: invalid configuration value: gaow_port");
+                        throw new Exception("invalid configuration value: gaow_port");
+                    }
+                }
             }
             else
             {
