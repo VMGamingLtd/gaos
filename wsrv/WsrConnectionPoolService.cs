@@ -1,4 +1,4 @@
-﻿#pragma warning disable 8600, 8622, 8618
+﻿#pragma warning disable 8600, 8622, 8618, 8601
 
 using System;
 using System.Collections.Concurrent;
@@ -59,6 +59,11 @@ namespace Gaos.wsrv
                         throw new Exception("invalid configuration value: gaow_port");
                     }
                 }
+                if (configuration["gaow_ip"] != null)
+                {
+                    this.ipAddress = configuration["gaow_ip"];
+                }
+
             }
             else
             {

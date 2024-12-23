@@ -62,6 +62,7 @@ var dbConnectionString = builder.Configuration.GetValue<string>("db_connection_s
 dbConnectionString += $";user={builder.Configuration.GetValue<string>("db_user")}";
 dbConnectionString += $";password={Gaos.Encryption.EncryptionHelper.Decrypt(builder.Configuration.GetValue<string>("db_password"))}";
 
+
 if (builder.Environment.EnvironmentName == "Test")
 {
     var section = builder.Configuration.GetSection("Kestrel:Certificates:Default");
@@ -140,7 +141,7 @@ builder.Services.AddScoped<Gaos.Common.WebsiteService>(provider =>
 
 builder.Services.AddScoped<Gaos.Mongo.MongoService>(provider =>
 {
-    return new Gaos.Mongo.MongoService(builder.Configuration);
+    return new Gaos.Mongo.MongoService(builder.Configuration, builder.Environment.EnvironmentName);
 });
 
 builder.Services.AddScoped<Gaos.Mongo.GameData>(provider =>

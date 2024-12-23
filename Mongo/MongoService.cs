@@ -1,4 +1,4 @@
-﻿#pragma warning disable 8601
+﻿#pragma warning disable 8601, 8604, 8602
 using Serilog;
 using MongoDB.Driver;
 using MongoDB.Bson;
@@ -19,7 +19,7 @@ namespace Gaos.Mongo
         private readonly string CollectionNameForGroupGameData = "GroupData"; 
 
 
-        public MongoService(IConfiguration configuration)
+        public MongoService(IConfiguration configuration, string environmentName)
         {
             const string METHOD_NAME = "MongoService";
 
@@ -31,6 +31,23 @@ namespace Gaos.Mongo
                 throw new Exception("missing configuration value: mongodb_connection_string");
             }
             DbConnectionString = Configuration["mongodb_connection_string"];
+            if (environmentName == "Development_multi")
+            {
+                if (Configuration["mongodb_connection_user"] == null)
+                {
+                    Log.Error($"{CLASS_NAME}:{METHOD_NAME} missing configuration value: mongodb_connection_user");
+                    throw new Exception("missing configuration value: mongodb_connection_user");
+                }
+                if (Configuration["mongodb_connection_password"] == null)
+                {
+                    Log.Error($"{CLASS_NAME}:{METHOD_NAME} missing configuration value: mongodb_connection_password");
+                    throw new Exception("missing configuration value: mongodb_connection_password");
+                }
+                string user = Gaos.Encryption.EncryptionHelper.Decrypt(Configuration["mongodb_connection_user"]);
+                DbConnectionString = DbConnectionString.Replace("USER", user);
+                string password = Gaos.Encryption.EncryptionHelper.Decrypt(Configuration["mongodb_connection_password"]);
+                DbConnectionString = DbConnectionString.Replace("PASSWORD", password);
+            }
 
             if (Configuration["mongodb_database_name"] == null)
             {
