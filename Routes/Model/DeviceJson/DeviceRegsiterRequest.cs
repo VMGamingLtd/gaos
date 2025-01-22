@@ -10,5 +10,8 @@ namespace Gaos.Routes.Model.DeviceJson
         public string? PlatformType { get; set; }
         public string? BuildVersion { get; set; }
 
+        public int? ecdhContext { get; set; }
+        public string? ecdhPublicKey { get; set; }
+
     }
 }

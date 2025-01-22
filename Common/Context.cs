@@ -4,6 +4,7 @@
     {
         public static string HTTP_CONTEXT_KEY_TOKEN_CLAIMS = "token_claims";
         public static string HTTP_CONTEXT_KEY_SESSION_ID = "session_id";
+        public static string HTTP_CONTEXT_KEY_SHARED_CLIENT_SERVER_SECRET = "shared_client_server_secret"; // used for encryption, password between client and server
 
         public static string ROLE_PLAYER_NAME = "Player";
         public static int ROLE_PLAYER_ID = 1;
