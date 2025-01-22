@@ -23,7 +23,7 @@ namespace Gaos.Routes
 
         public static string CLASS_NAME = typeof(FriendRoutes).Name;
 
-        public record GetUsersForFriendsSearchResult(int UserId, string UserName, bool IsFriend, bool IsFriendRequest);
+        public record GetUsersForFriendsSearchResult(int UserId, string UserName, bool IsMyFriend, bool IsMyFriendRequest, bool IsFriendRequestToMe);
 
         public static async Task<List<GetUsersForFriendsSearchResult>> GetUsersForFriendsSearch(MySqlDataSource dataSource, int userId, int maxCount, string userNamePattern)
         {
@@ -58,10 +58,15 @@ namespace Gaos.Routes
                     User u
                 LEFT JOIN
                     UserFriend uf 
-                    ON (u.Id = uf.UserId) OR (u.Id = uf.FriendId)
+                    ON 
+                       (
+                         (uf.UserId = u.Id AND uf.FriendId = @UserId)
+                         OR
+                         (uf.UserId = @UserId   AND uf.FriendId = u.Id)
+                       )
                 WHERE
                     u.Name LIKE @userNamePattern
-                    and u.Id != @userId
+                    and u.Id != @UserId
                 LIMIT 
                     @maxCount;
                 ";
@@ -93,10 +98,9 @@ namespace Gaos.Routes
                     var _UserId = reader.GetInt32(0);
                     var _UserName = reader.GetString(1);
                     int _IsMyFriend = reader.GetInt32(2);
-                    bool _IsFriend = _IsMyFriend > 0;
                     int _IsMyFriendRequest = reader.GetInt32(3);
-                    bool _IsFriendRequest = _IsMyFriendRequest > 0;
-                    result.Add(new GetUsersForFriendsSearchResult(_UserId, _UserName, _IsFriend, _IsFriendRequest));
+                    int _IsFriendRequestToMe = reader.GetInt32(4);
+                    result.Add(new GetUsersForFriendsSearchResult(_UserId, _UserName, _IsMyFriend > 0, _IsMyFriendRequest > 0, _IsFriendRequestToMe > 0));
                 }
                 reader.Close();
 
@@ -193,8 +197,9 @@ namespace Gaos.Routes
                         {
                             UserId = u.UserId,
                             UserName = u.UserName,
-                            IsFriend = u.IsFriend,
-                            IsFriendRequest = u.IsFriendRequest
+                            IsMyFriend = u.IsMyFriend,
+                            IsMyFriendRequest = u.IsMyFriendRequest,
+                            IsFriendRequestToMe = u.IsFriendRequestToMe
                         }).ToArray()
                     };
 

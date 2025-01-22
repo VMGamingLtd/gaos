@@ -33,5 +33,8 @@ namespace Gaos.Routes.Model.DeviceJson
         public UserInterfaceColors? UserInterfaceColors { get; set; }
         public DeviceRegisterResponseUserSlot[]? UserSlots { get; set; }
 
+        public int? ecdhContext { get; set; }
+        public string? ecdhPublicKey { get; set; }
+
     }
 }
