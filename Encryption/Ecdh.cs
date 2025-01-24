@@ -24,8 +24,6 @@ namespace Gaos.Encryption
                 // Convert the public key to a base64 string
                 string muPubKey = System.Convert.ToBase64String(myPubKeySpkiBytes);
 
-                Log.Information($"@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 400: PublicKey: {pubKeyBase64}");
-
                 byte[] clientPubKeySpkiBytes = Convert.FromBase64String(pubKeyBase64);
                 using var clientEcdhPub = ECDiffieHellman.Create();
                 clientEcdhPub.ImportSubjectPublicKeyInfo(clientPubKeySpkiBytes, out _);
@@ -33,10 +31,12 @@ namespace Gaos.Encryption
                 //byte[] sharedSecret = myEcdh.DeriveKeyMaterial(clientEcdhPub.PublicKey);
                 byte[] sharedSecret = myEcdh.DeriveKeyFromHash(clientEcdhPub.PublicKey, HashAlgorithmName.SHA256);
                 // print sharedSecrent bytes
+                /*
                 for (int i = 0; i < sharedSecret.Length; i++)
                 {
                     Log.Information($"@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 500: sharedSecret[{i}]: {sharedSecret[i]}");
                 }
+                */
 
                 DeriveSharedSecretResult result = new DeriveSharedSecretResult
                 {
