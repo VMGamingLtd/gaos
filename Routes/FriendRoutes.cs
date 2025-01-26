@@ -178,6 +178,55 @@ namespace Gaos.Routes
             }
         }
 
+        public record GetFriendRequestsToMeResult(int UserId, string UserName);
+
+        public static async Task<List<GetFriendRequestsToMeResult>> GetFriendRequestsToMe(MySqlDataSource dataSource, int userId, int maxCount)
+        {
+            const string METHOD_NAME = "GetFriendRequestsToMe()";
+
+            var sqlQuery = @$"
+                SELECT
+                    u.Id AS UserId,
+                    u.Name AS UserName
+                FROM
+                    UserFriend uf
+                    JOIN User u ON uf.UserId = u.Id
+                WHERE
+                    uf.FriendId = @UserId
+                    AND uf.isFriendAgreement = 0
+                LIMIT
+                    @MaxCount;
+            ";
+
+            try
+            {
+                using var connection = await dataSource.OpenConnectionAsync();
+                using var command = connection.CreateCommand();
+                command.CommandText = sqlQuery;
+                command.Parameters.AddWithValue("@UserId", userId);
+                command.Parameters.AddWithValue("@MaxCount", maxCount);
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                var result = new List<GetFriendRequestsToMeResult>();
+
+                while (await reader.ReadAsync())
+                {
+                    var requestUserId = reader.GetInt32(0);
+                    var requestUserName = reader.GetString(1);
+
+                    result.Add(new GetFriendRequestsToMeResult(requestUserId, requestUserName));
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
+                throw new Exception("Internal error retrieving friend requests");
+            }
+        }
+
         public static RouteGroupBuilder Friends(this RouteGroupBuilder group)
         {
             group.MapGet("/hello", (Db db) => "hello");
@@ -216,6 +265,51 @@ namespace Gaos.Routes
                     return Results.Json(response);
                 }
             });
+
+            group.MapPost("/getFriendRequests", async (Model.FriendJson.GetFriendRequestsRequest request, MySqlDataSource dataSource, Gaos.Common.UserService userService) =>
+            {
+                const string METHOD_NAME = "friends/getFriendRequests";
+
+                try
+                {
+                    var user = userService.GetUser();
+
+                    var pendingRequests = await GetFriendRequestsToMe(dataSource, user.Id, request.MaxCount);
+
+                    FriendRequest[] friendRequests = new FriendRequest[pendingRequests.Count];
+                    for (int i = 0; i < pendingRequests.Count; i++)
+                    {
+                        friendRequests[i] = new FriendRequest
+                        {
+                            UserId = pendingRequests[i].UserId,
+                            UserName = pendingRequests[i].UserName
+                        };
+                    }
+
+                    var response = new Model.FriendJson.GetFriendRequestsResponse
+                    {
+                        IsError = false,
+                        FriendRequest = friendRequests
+                    };
+
+                    // 4) Return as JSON
+                    return Results.Json(response);
+                }
+                catch (Exception ex)
+                {
+                    // Log and return an error response
+                    Log.Error(ex, $"{METHOD_NAME}: error: {ex.Message}");
+
+                    var response = new Model.FriendJson.GetFriendRequestsResponse
+                    {
+                        IsError = true,
+                        ErrorMessage = "Internal error",
+                        FriendRequest = Array.Empty<FriendRequest>()
+                    };
+                    return Results.Json(response);
+                }
+            });
+
 
             group.MapPost("/requestFriend", async (RequestFriendRequest request, Db db, Gaos.Common.UserService userService) =>
             {
@@ -278,6 +372,48 @@ namespace Gaos.Routes
                     return Results.Json(response);
                 }
             });
+
+            group.MapPost("/acceptFriendRequest", async (FriendRequestAcceptRequest request, Db db, Gaos.Common.UserService userService) =>
+            {
+                const string METHOD_NAME = "friends/acceptFriendRequest";
+                try
+                {
+                    int myUserId = userService.GetUserId(); 
+                    int senderUserId = request.UserId;
+
+                    var userFriend = await db.UserFriend.FirstOrDefaultAsync(uf =>
+                            uf.UserId == senderUserId
+                            && uf.FriendId == myUserId
+                            && uf.IsFriendAgreement == false
+                    );
+
+                    if (userFriend != null)
+                    {
+                        userFriend.IsFriendAgreement = true;
+                        await db.SaveChangesAsync();
+                    }
+
+                    FriendRequestAcceptResponse response = new FriendRequestAcceptResponse
+                    {
+                        IsError = false,
+                        ErrorMessage = null
+                    };
+                    return Results.Json(response);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, $"{FriendRoutes.CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
+
+                    // 4) Prepare the error response
+                    FriendRequestAcceptResponse response = new FriendRequestAcceptResponse
+                    {
+                        IsError = true,
+                        ErrorMessage = "Internal error accepting friend request"
+                    };
+                    return Results.Json(response);
+                }
+            });
+
 
             group.MapPost("/removeFriend", async (RemoveFriendRequest request, Db db, Gaos.Common.UserService userService) =>
             {
