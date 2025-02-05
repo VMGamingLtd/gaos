@@ -8,6 +8,7 @@ using Gaos.Auth;
 using Gaos.Dbo;
 using Gaos.Routes.Model.ChatRoomJson;
 using Gaos.Dbo.Model;
+using MySqlConnector;
 
 namespace Gaos.Routes
 {
@@ -21,7 +22,7 @@ namespace Gaos.Routes
         {
             group.MapGet("/hello", (Db db) => "hello");
 
-            group.MapPost("/writeMessage", async (WriteMessageRequest writeMessageRequest, Db db, Gaos.Common.UserService userService) =>
+            group.MapPost("/writeMessage", async (WriteMessageRequest writeMessageRequest, Db db, MySqlDataSource dataSource, Gaos.Common.UserService userService) =>
             {
                 const string METHOD_NAME = "chatRoom/writeMessage";
                 try
@@ -73,6 +74,19 @@ namespace Gaos.Routes
                                 maxMessageId = await db.ChatRoomMessage.Where(x => x.ChatRoomId == writeMessageRequest.ChatRoomId).MaxAsync(x => x.MessageId);
                             }
 
+                            if (maxMessageId == Int32.MaxValue - 1)
+                            {
+                                transaction.Rollback();
+                                response = new WriteMessageResponse
+                                {
+                                    IsError = true,
+                                    ErrorMessage = "message id would overflow",
+
+                                };
+                                Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: message id would overflow, chatroom id: {writeMessageRequest.ChatRoomId}");
+                                return Results.Json(response);
+                            }
+
                             // Remove messages if there are more than MAX_NUMBER_OF_MESSAGES_IN_ROOM 
                             if (maxMessageId - minMessageId > MAX_NUMBER_OF_MESSAGES_IN_ROOM)
                             {
@@ -80,18 +94,27 @@ namespace Gaos.Routes
                             }
 
                             // Verify if user is a member of the chat room
-                            ChatRoomMember chatRoomMember = await db.ChatRoomMember.FirstOrDefaultAsync(x => x.ChatRoomId == writeMessageRequest.ChatRoomId && x.UserId == userService.GetUserId());
-                            if (chatRoomMember == null)
+                            bool isFriends = false;
+                            if (chatRoom.IsFriedndsChatroom)
                             {
-                                transaction.Rollback();
-                                response = new WriteMessageResponse
+                                // verify if chatroom owner and user are friends
+                                isFriends = await FriendRoutes.UsersAreFriends(dataSource, userService.GetUserId(), chatRoom.OwnerId);
+                            }
+                            if (!isFriends)
+                            {
+                                ChatRoomMember chatRoomMember = await db.ChatRoomMember.FirstOrDefaultAsync(x => x.ChatRoomId == writeMessageRequest.ChatRoomId && x.UserId == userService.GetUserId());
+                                if (chatRoomMember == null)
                                 {
-                                    IsError = true,
-                                    ErrorMessage = "user is not a member of chat room",
+                                    transaction.Rollback();
+                                    response = new WriteMessageResponse
+                                    {
+                                        IsError = true,
+                                        ErrorMessage = "user is not a member of chat room",
 
-                                };
-                                return Results.Json(response);
-
+                                    };
+                                    return Results.Json(response);
+                                }
+                                isFriends = true;
                             }
 
                             Gaos.Dbo.Model.User user = userService.GetUser();
@@ -152,7 +175,7 @@ namespace Gaos.Routes
                 
             });
 
-            group.MapPost("/readMessages", async (ReadMessagesRequest readMessagesRequest, Db db, Gaos.Common.UserService userService) =>
+            group.MapPost("/readMessages", async (ReadMessagesRequest readMessagesRequest, Db db, MySqlDataSource dataSource,  Gaos.Common.UserService userService) =>
             {
                 const string METHOD_NAME = "chatRoom/readMessages";
                 ReadMessagesResponse response;
@@ -174,15 +197,26 @@ namespace Gaos.Routes
                     }
 
                     // Verify if user is a member of the chat room
-                    ChatRoomMember chatRoomMember = await db.ChatRoomMember.FirstOrDefaultAsync(x => x.ChatRoomId == readMessagesRequest.ChatRoomId && x.UserId == userService.GetUserId());
-                    if (chatRoomMember == null)
+                    bool isFriends = false;
+                    if (chatRoom.IsFriedndsChatroom)
                     {
-                        response = new ReadMessagesResponse
+                        // verify if chatroom owner and user are friends
+                        isFriends = await FriendRoutes.UsersAreFriends(dataSource, userService.GetUserId(), chatRoom.OwnerId);
+                    }
+                    if (!isFriends)
+                    {
+                        ChatRoomMember chatRoomMember = await db.ChatRoomMember.FirstOrDefaultAsync(x => x.ChatRoomId == readMessagesRequest.ChatRoomId && x.UserId == userService.GetUserId());
+                        if (chatRoomMember == null)
                         {
-                            IsError = true,
-                            ErrorMessage = "user is not a member of chat room",
-                        };
-                        return Results.Json(response);
+                            response = new ReadMessagesResponse
+                            {
+                                IsError = true,
+                                ErrorMessage = "user is not a member of chat room",
+
+                            };
+                            return Results.Json(response);
+                        }
+                        isFriends = true;
                     }
 
                     using (var transaction = db.Database.BeginTransaction())
@@ -259,7 +293,7 @@ namespace Gaos.Routes
                 }
             });
 
-            group.MapPost("/readMessagesBackwards", async (ReadMessagesBackwardsRequest readMessagesBackwardsRequest, Db db, Gaos.Common.UserService userService) =>
+            group.MapPost("/readMessagesBackwards", async (ReadMessagesBackwardsRequest readMessagesBackwardsRequest, Db db, MySqlDataSource dataSource, Gaos.Common.UserService userService) =>
             {
                 const string METHOD_NAME = "chatRoom/readMessagesBackwards";
                 ReadMessagesBackwardsResponse response;
@@ -281,15 +315,26 @@ namespace Gaos.Routes
                     }
 
                     // Verify if user is a member of the chat room
-                    ChatRoomMember chatRoomMember = await db.ChatRoomMember.FirstOrDefaultAsync(x => x.ChatRoomId == readMessagesBackwardsRequest.ChatRoomId && x.UserId == userService.GetUserId());
-                    if (chatRoomMember == null)
+                    bool isFriends = false;
+                    if (chatRoom.IsFriedndsChatroom)
                     {
-                        response = new ReadMessagesBackwardsResponse
+                        // verify if chatroom owner and user are friends
+                        isFriends = await FriendRoutes.UsersAreFriends(dataSource, userService.GetUserId(), chatRoom.OwnerId);
+                    }
+                    if (!isFriends)
+                    {
+                        ChatRoomMember chatRoomMember = await db.ChatRoomMember.FirstOrDefaultAsync(x => x.ChatRoomId == readMessagesBackwardsRequest.ChatRoomId && x.UserId == userService.GetUserId());
+                        if (chatRoomMember == null)
                         {
-                            IsError = true,
-                            ErrorMessage = "user is not a member of chat room",
-                        };
-                        return Results.Json(response);
+                            response = new ReadMessagesBackwardsResponse
+                            {
+                                IsError = true,
+                                ErrorMessage = "user is not a member of chat room",
+
+                            };
+                            return Results.Json(response);
+                        }
+                        isFriends = true;
                     }
 
                     using (var transaction = db.Database.BeginTransaction())
@@ -452,6 +497,7 @@ namespace Gaos.Routes
                             Gaos.Dbo.Model.ChatRoom chatRoom = new Gaos.Dbo.Model.ChatRoom
                             {
                                 Name = createChatRoomRequest.ChatRoomName,
+                                IsFriedndsChatroom = (bool)createChatRoomRequest.IsFriedndsChatroom,
                                 OwnerId = userService.GetUserId(),
                             };
 

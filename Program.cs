@@ -89,8 +89,8 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Logging.ClearProviders();
 Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Debug()
-    //.MinimumLevel.Warning()
+    //.MinimumLevel.Debug()
+    .MinimumLevel.Warning()
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Warning)
     .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss.fff} {Level:u3}] {Message:lj}{NewLine}{Exception}")
     .WriteTo.Debug()

@@ -227,6 +227,46 @@ namespace Gaos.Routes
             }
         }
 
+        public static async Task<bool> UsersAreFriends(MySqlDataSource dataSource, int userId1, int userId2)
+        {
+            const string METHOD_NAME = "UsersAreFriends()";
+
+            try
+            {
+                // Quick check to avoid a DB round-trip if both IDs are the same.
+                if (userId1 == userId2)
+                {
+                    return false;
+                }
+
+                using var connection = await dataSource.OpenConnectionAsync();
+                using var command = connection.CreateCommand();
+                command.CommandText = @"
+                    SELECT COUNT(*)
+                    FROM UserFriend uf
+                    WHERE 
+                        (
+                           (uf.UserId = @userId1 AND uf.FriendId = @userId2)
+                           OR
+                           (uf.UserId = @userId2 AND uf.FriendId = @userId1)
+                        )
+                        AND uf.isFriendAgreement = 1
+                ";
+                command.Parameters.AddWithValue("@userId1", userId1);
+                command.Parameters.AddWithValue("@userId2", userId2);
+
+                var result = (long)await command.ExecuteScalarAsync();
+
+                // If count > 0, it means there's at least one matching record
+                return result > 0;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
+                throw new Exception("internal error");
+            }
+        }
+
         public static RouteGroupBuilder Friends(this RouteGroupBuilder group)
         {
             group.MapGet("/hello", (Db db) => "hello");
@@ -378,7 +418,7 @@ namespace Gaos.Routes
                 const string METHOD_NAME = "friends/acceptFriendRequest";
                 try
                 {
-                    int myUserId = userService.GetUserId(); 
+                    int myUserId = userService.GetUserId();
                     int senderUserId = request.UserId;
 
                     var userFriend = await db.UserFriend.FirstOrDefaultAsync(uf =>

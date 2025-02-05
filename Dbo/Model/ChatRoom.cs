@@ -8,6 +8,7 @@ namespace Gaos.Dbo.Model
         public string? Name { get; set; }
         public int OwnerId { get; set; }
         public User? Owner { get; set; }
+        public bool IsFriedndsChatroom { get; set; }
 
     }
 }
