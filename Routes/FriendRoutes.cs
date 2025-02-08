@@ -38,19 +38,19 @@ namespace Gaos.Routes
                     CASE 
                         WHEN 
                             uf.Id IS NOT NULL AND (
-                                (uf.UserId = @UserId AND  (uf.FriendId IS NOT NULL AND uf.isFriendAgreement = 1)) OR
-                                (uf.FriendId = @UserId AND  (uf.UserId IS NOT NULL AND uf.isFriendAgreement = 1))   
+                                (uf.UserId = @UserId AND  (uf.FriendId IS NOT NULL AND uf.IsFriendAgreement = 1)) OR
+                                (uf.FriendId = @UserId AND  (uf.UserId IS NOT NULL AND uf.IsFriendAgreement = 1))   
                             )
                         THEN 1
                         ELSE 0
                     END AS IsMyFriend,
                     CASE 
-                        WHEN uf.Id IS NOT NULL AND (uf.UserId = @UserId AND (uf.FriendId IS NOT NULL AND  uf.isFriendAgreement = 0))
+                        WHEN uf.Id IS NOT NULL AND (uf.UserId = @UserId AND (uf.FriendId IS NOT NULL AND  uf.IsFriendAgreement = 0))
                         THEN 1
                         ELSE 0
                     END AS IsMyFriendRequest,
                     CASE 
-                        WHEN uf.Id IS NOT NULL AND (uf.FriendId = @UserId AND (uf.UserId IS NOT NULL AND  uf.isFriendAgreement = 0)) 
+                        WHEN uf.Id IS NOT NULL AND (uf.FriendId = @UserId AND (uf.UserId IS NOT NULL AND  uf.IsFriendAgreement = 0)) 
                         THEN 1
                         ELSE 0
                     END AS IsFriendRequestToMe
@@ -132,7 +132,7 @@ namespace Gaos.Routes
                             UserFriend uf
                             JOIN User u ON (uf.UserId = u.Id OR uf.FriendId = u.Id)
                         WHERE
-                            (uf.UserId = @UserId OR uf.FriendId = @UserId) AND uf.isFriendAgreement = 1
+                            (uf.UserId = @UserId OR uf.FriendId = @UserId) AND uf.IsFriendAgreement = 1
                             AND u.Id != @UserId
                             AND u.Name LIKE @userNamePattern
                         LIMIT   
@@ -193,7 +193,7 @@ namespace Gaos.Routes
                     JOIN User u ON uf.UserId = u.Id
                 WHERE
                     uf.FriendId = @UserId
-                    AND uf.isFriendAgreement = 0
+                    AND uf.IsFriendAgreement = 0
                 LIMIT
                     @MaxCount;
             ";
@@ -250,7 +250,7 @@ namespace Gaos.Routes
                            OR
                            (uf.UserId = @userId2 AND uf.FriendId = @userId1)
                         )
-                        AND uf.isFriendAgreement = 1
+                        AND uf.IsFriendAgreement = 1
                 ";
                 command.Parameters.AddWithValue("@userId1", userId1);
                 command.Parameters.AddWithValue("@userId2", userId2);

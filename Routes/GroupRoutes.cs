@@ -13,9 +13,15 @@ using System.Security.Cryptography.X509Certificates;
 using Org.BouncyCastle.Security;
 using System.Diagnostics;
 
+/*
+User gorups are disjoint a user cannot be member of more then one group.
+Every user can open just one and only one group of which such a user becomes the owner.
+The owner of the group becomes also the group member.
+The owner of the group may invite the other user to join the group providing the other user is not member of the the group.
+*/
+
 namespace Gaos.Routes
 {
-
     public static class GroupRoutes
     {
         public static int MAX_NUMBER_OF_MESSAGES_IN_ROOM = 100;
@@ -36,13 +42,14 @@ namespace Gaos.Routes
             public string? GroupOwnerName { get; set; }
         };
 
-        public record GetUsersForFriendsSearchResult(int UserId, string UserName, bool IsFriend, bool IsFriendRequest); 
+        public record GetUsersForFriendsSearchResult(int UserId, string UserName, bool IsFriend, bool IsFriendRequest);
 
-        public static async  Task<List<GetUsersForFriendsSearchResult>> GetUsersForFriendsSearch(MySqlDataSource dataSource, int userId, int maxCount, string userNamePattern)
+        public static async Task<List<GetUsersForFriendsSearchResult>> GetUsersForFriendsSearch(MySqlDataSource dataSource, int userId, int maxCount, string userNamePattern)
         {
             const string METHOD_NAME = "GetUsersForFriendsSearch()";
             // Select users and if selected user is already a friend of logged in user (identified by method parameter userId) then  FriendId will be not null and equal to the selected user id. 
-            // The friedship to looged in user is determined via membership in group owned by logged in user, any group member is a friend of the group owner.
+            // The friedship to logged in user is determined via membership in group owned by logged in user, any group member is a friend of the group owner.
+            // If there exist for the selected user friend FriendRequestId for logged in user, then FriendRequestId will be not null and equeal to friend request id.
             var sqlQuery =
 @$"
 select
@@ -115,7 +122,7 @@ limit  @maxCount
 
                 return result;
 
-            } 
+            }
             catch (Exception ex)
             {
                 Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
@@ -125,10 +132,142 @@ limit  @maxCount
 
         }
 
+    public static async Task<List<GetUsersForFriendsSearchResult>> GetUsersForFriendsSearch_new(MySqlDataSource dataSource, int userId, int maxCount, string userNamePattern)
+    {
+        const string METHOD_NAME = "GetUsersForFriendsSearch()";
 
-        public record GetRequestsForFriendRequestSearchResult(int GroupId, int GroupOwnerId, string GroupOwnerName, int TotalCount); 
-        public static async  Task<List<GetRequestsForFriendRequestSearchResult>> GetRequestsForFriendRequestSearch(MySqlDataSource dataSource, 
-                                                                                                                    int userId, string ownerNamePattern, 
+        // Select users and if selected user is already a friend of logged in user (identified by method parameter userId) then  FriendId will be not null and equal to the selected user id. 
+        // The friedship to logged in user is determined via membership in group owned by logged in user, any group member is a friend of the group owner.
+        // If there exist for the selected user friend FriendRequestId for logged in user, then FriendRequestId will be not null and equeal to friend request id.
+        
+        // The query now restricts the candidate users to those with an approved friend relationship,
+        // i.e. only those for which there is a record in UserFriend with isFriendAgreement = 1.
+        var sqlQuery = @$"
+    select
+        u.Id as UserId,
+        u.Name as UserName,
+        Friend.Id as FriendId,    
+        FriendRequest.Id as FriendRequestId
+    from
+        User u
+    inner join
+        UserFriend uf
+        on (
+             (
+               (uf.UserId = @userId and uf.FriendId = u.Id)
+               or
+               (uf.FriendId = @userId and uf.UserId = u.Id)
+             )
+             and uf.isFriendAgreement = 1
+           )
+    left join 
+    (
+        select
+            GroupMember.UserId as Id
+        from
+            Groupp
+        join GroupMember on Groupp.Id = GroupMember.GroupId
+        where
+            Groupp.OwnerId = @userId
+    ) as Friend on Friend.Id = u.Id 
+    left join 
+    (
+        select
+            GroupMemberRequest.UserId as Id
+        from
+            Groupp
+        join GroupMemberRequest on Groupp.Id = GroupMemberRequest.GroupId
+        where
+            Groupp.OwnerId = @userId
+    ) as FriendRequest on FriendRequest.Id = u.Id 
+    where
+        u.Name like @userNamePattern
+    limit  @maxCount;
+    ";
+
+        var sqlQuery_restricted = @$"
+    select
+        u.Id as UserId,
+        u.Name as UserName,
+        Friend.Id as FriendId,    
+        FriendRequest.Id as FriendRequestId
+    from
+        User u
+    inner join
+        UserFriend uf
+        on (
+             (
+               (uf.UserId = @userId and uf.FriendId = u.Id)
+               or
+               (uf.FriendId = @userId and uf.UserId = u.Id)
+             )
+             and uf.isFriendAgreement = 1
+           )
+    left join 
+    (
+        select
+            GroupMember.UserId as Id
+        from
+            Groupp
+        join GroupMember on Groupp.Id = GroupMember.GroupId
+        where
+            Groupp.OwnerId = @userId
+    ) as Friend on Friend.Id = u.Id 
+    left join 
+    (
+        select
+            GroupMemberRequest.UserId as Id
+        from
+            Groupp
+        join GroupMemberRequest on Groupp.Id = GroupMemberRequest.GroupId
+        where
+            Groupp.OwnerId = @userId
+    ) as FriendRequest on FriendRequest.Id = u.Id 
+    where
+        u.Name like @userNamePattern
+    limit  @maxCount;
+    ";
+        try
+        {
+            // Build the like pattern – if no filter is provided, return all users.
+            string likePattern = string.IsNullOrEmpty(userNamePattern) ? "%" : $"%{userNamePattern}%";
+
+            using var connection = await dataSource.OpenConnectionAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = sqlQuery;
+            command.Parameters.AddWithValue("@userId", userId);
+            command.Parameters.AddWithValue("@userNamePattern", likePattern);
+            command.Parameters.AddWithValue("@maxCount", maxCount);
+
+            using var reader = await command.ExecuteReaderAsync();
+            List<GetUsersForFriendsSearchResult> result = new List<GetUsersForFriendsSearchResult>();
+
+            while (await reader.ReadAsync())
+            {
+                int _UserId = reader.GetInt32(0);
+                string _UserName = reader.GetString(1);
+                // The Friend join returns a non-null value if the user is already in my group.
+                bool isFriend = !reader.IsDBNull(2);
+                // The FriendRequest join returns a non-null value if a group invitation (friend request) exists.
+                bool isFriendRequest = !reader.IsDBNull(3);
+                result.Add(new GetUsersForFriendsSearchResult(_UserId, _UserName, isFriend, isFriendRequest));
+            }
+            reader.Close();
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
+            throw new Exception("internal error");
+        }
+    }
+
+
+
+        public record GetRequestsForFriendRequestSearchResult(int GroupId, int GroupOwnerId, string GroupOwnerName, int TotalCount);
+        public static async Task<List<GetRequestsForFriendRequestSearchResult>> GetRequestsForFriendRequestSearch(MySqlDataSource dataSource,
+                                                                                                                    int userId, string ownerNamePattern,
                                                                                                                     int maxCount, bool isCountOnly)
         {
             const string METHOD_NAME = "GetRequestsForFriendRequestSearch()";
@@ -247,7 +386,7 @@ where
         {
             group.MapGet("/hello", (Db db) => "hello");
 
-            group.MapPost("/getMyGroup", async (GetMyGroupRequest getMyGroupReuest,  Gaos.Common.UserService userService) =>
+            group.MapPost("/getMyGroup", async (GetMyGroupRequest getMyGroupReuest, Gaos.Common.UserService userService) =>
             {
                 const string METHOD_NAME = "groups/getMyGroup";
                 try
@@ -378,7 +517,7 @@ where
             group.MapPost("/getMyGroupMembers", async (GetMyGroupMembersRequest getMyGroupMembersRequest, Db db, Gaos.Common.UserService userService) =>
             {
                 const string METHOD_NAME = "groups/getMyGroupMembers";
-        
+
                 try
                 {
                     GetMyGroupMembersResponse response;
@@ -839,8 +978,11 @@ where
                         };
                         db.GroupMember.Add(groupMemberNew);
 
-                        // Remove GroupMemberRequest
-                        db.GroupMemberRequest.Remove(groupMemberRequest);
+                        // Remove all pending GroupMemberRequest entries for this user (including the accepted one)
+                        var pendingRequests = await db.GroupMemberRequest
+                            .Where(x => x.UserId == userId)
+                            .ToListAsync();
+                        db.GroupMemberRequest.RemoveRange(pendingRequests);
 
                         await db.SaveChangesAsync();
                         transaction.Commit();
@@ -925,7 +1067,7 @@ where
 
 
 
-            group.MapPost("/removeFromGroup", async (RemoveFromGroupRequest removeFromGroupRequest, Db db, Gaos.Common.UserService userService) => 
+            group.MapPost("/removeFromGroup", async (RemoveFromGroupRequest removeFromGroupRequest, Db db, Gaos.Common.UserService userService) =>
             {
                 const string METHOD_NAME = "groups/removeFromGroup";
                 using (var transaction = db.Database.BeginTransaction())
