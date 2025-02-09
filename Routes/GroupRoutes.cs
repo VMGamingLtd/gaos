@@ -725,6 +725,7 @@ where
 
                         if (otherGroupExists)
                         {
+                            Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: friend is already member of another Groupp, friend userId: {friendId}");
                             response = new AddFriendResponse
                             {
                                 IsError = true,
@@ -733,9 +734,21 @@ where
                             return Results.Json(response);
                         }
 
+                        // check is already group owner
+                        bool friendIsGroupOwner = await db.Groupp
+                            .AnyAsync(x => x.OwnerId == friendId);
+                        if (friendIsGroupOwner)
+                        {
+                            response = new AddFriendResponse
+                            {
+                                IsError = true,
+                                ErrorMessage = "friend is already group owner",
+                            };
+                        }
+
                         // Check group.Id, friendId is Already in GroupMemberRequest
                         bool groupMemberRequestExists = await db.GroupMemberRequest
-                            .AnyAsync(x => x.GroupId == group.Id && x.UserId == friendId);
+                        .AnyAsync(x => x.GroupId == group.Id && x.UserId == friendId);
                         if (groupMemberRequestExists)
                         {
                             Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: group member request already exists, groupId: {group.Id}, userId: {friendId}");
