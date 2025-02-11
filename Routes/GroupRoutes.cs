@@ -682,6 +682,7 @@ where
                             .AnyAsync(x => x.UserId == userId);
                         if (userIsGroupMember)
                         {
+                            transaction.Rollback();
                             Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: logged in user is already a member of some group, userId: {userId}");
                             response = new AddFriendResponse
                             {
@@ -694,6 +695,7 @@ where
                         // Check if friend to be added and group owner are same person
                         if (group.OwnerId == friendId)
                         {
+                            transaction.Rollback();
                             Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: friend is group owner, groupId: {group.Id}, userId: {friendId}");
                             response = new AddFriendResponse
                             {
@@ -705,10 +707,11 @@ where
 
 
                         // Check if friend is already in Groupp
-                        bool friendExists = await db.GroupMember
+                        bool friendIsAlreadyMember = await db.GroupMember
                             .AnyAsync(x => x.GroupId == group.Id && x.UserId == friendId);
-                        if (friendExists)
+                        if (friendIsAlreadyMember)
                         {
+                            transaction.Rollback();
                             Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: friend is already group member, groupId: {group.Id}, userId: {friendId}");
                             response = new AddFriendResponse
                             {
@@ -719,31 +722,43 @@ where
                         }
 
                         // Check if friend is member of any other Groupp
-                        bool otherGroupExists = await db.GroupMember
+                        bool friendIsAlreadyMemberOfOtherGroup = await db.GroupMember
                             .Where(x => x.UserId == friendId)
                             .AnyAsync();
-
-                        if (otherGroupExists)
+                        if (friendIsAlreadyMemberOfOtherGroup)
                         {
-                            Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: friend is already member of another Groupp, friend userId: {friendId}");
+                            transaction.Rollback();
+                            Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: friend is already member of other Groupp, friend userId: {friendId}");
                             response = new AddFriendResponse
                             {
                                 IsError = true,
-                                ErrorMessage = "friend is already member of another Groupp",
+                                ErrorMessage = "friend is already member of other Groupp",
                             };
                             return Results.Json(response);
                         }
 
-                        // check is already group owner
-                        bool friendIsGroupOwner = await db.Groupp
-                            .AnyAsync(x => x.OwnerId == friendId);
-                        if (friendIsGroupOwner)
+                        // check if friend is already group owner of any non empty group
+
+                        // Read all Groupp records for friend user
+                        Groupp[] friendGroups = await db.Groupp
+                            .Where(x => x.OwnerId == friendId)
+                            .ToArrayAsync();
+                        // iterate over all Groupp records for friend user
+                        foreach (var friendGroup in friendGroups)
                         {
-                            response = new AddFriendResponse
+                            // check if friendGroup has any members
+                            bool friendGroupHasMembers = await db.GroupMember
+                                .AnyAsync(x => x.GroupId == friendGroup.Id);
+                            if (friendGroupHasMembers)
                             {
-                                IsError = true,
-                                ErrorMessage = "friend is already group owner",
-                            };
+                                transaction.Rollback();
+                                response = new AddFriendResponse
+                                {
+                                    IsError = true,
+                                    ErrorMessage = "friend is already group owner of non empty group",
+                                };
+                                return Results.Json(response);
+                            }
                         }
 
                         // Check group.Id, friendId is Already in GroupMemberRequest
@@ -751,6 +766,7 @@ where
                         .AnyAsync(x => x.GroupId == group.Id && x.UserId == friendId);
                         if (groupMemberRequestExists)
                         {
+                            transaction.Rollback();
                             Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: group member request already exists, groupId: {group.Id}, userId: {friendId}");
                             response = new AddFriendResponse
                             {
@@ -935,6 +951,75 @@ where
                         int groupId = acceptFriendRequest.GroupId;
                         int userId = userService.GetUserId();
 
+                        // Check if logged in user is already a member of some other group
+                        bool userIsGroupMember = await db.GroupMember
+                            .AnyAsync(x => x.UserId == userId && x.GroupId != groupId);
+                        if (userIsGroupMember)
+                        {
+                            transaction.Rollback();
+                            Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: logged in user is already a member of some group, userId: {userId}");
+                            response = new AcceptFriendRequestResponse
+                            {
+                                IsError = true,
+                                ErrorMessage = "logged in user is already a member of some group",
+                            };
+                            return Results.Json(response);
+                        }
+
+                        // get group owner id
+                        int? groupOwnerId = await db.Groupp
+                            .Where(x => x.Id == groupId)
+                            .Select(x => x.OwnerId)
+                            .FirstAsync();
+                        if (groupOwnerId == null)
+                        {
+                            transaction.Rollback();
+                            Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: no such group: {groupId}");
+                            response = new AcceptFriendRequestResponse
+                            {
+                                IsError = true,
+                                ErrorMessage = "no such group",
+                            };
+                            return Results.Json(response);
+                        }
+
+                        // Check if logged in user is not same user as the group owner
+                        if (groupOwnerId == userId)
+                        {
+                            transaction.Rollback();
+                            Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: logged in user is group owner, groupId: {groupId}, userId: {userId}");
+                            response = new AcceptFriendRequestResponse
+                            {
+                                IsError = true,
+                                ErrorMessage = "logged in user is group owner",
+                            };
+                            return Results.Json(response);
+                        }
+
+                        // check if logged in user is not an owner of some other non empty group
+
+                        // get all Groupp records of logged in user
+                        Groupp[] userGroups = db.Groupp.Where(x => x.OwnerId == userId && x.Id != groupId).ToArray();
+                        // iterate over all Groupp records of logged in user
+                        foreach (var userGroup in userGroups)
+                        {
+                            // check if userGroup has any members
+                            bool userGroupHasMembers = await db.GroupMember
+                                .AnyAsync(x => x.GroupId == userGroup.Id);
+                            if (userGroupHasMembers)
+                            {
+                                transaction.Rollback();
+                                Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: logged in user is group owner of other non empty group, groupId: {userGroup.Id}, userId: {userId}");
+                                response = new AcceptFriendRequestResponse
+                                {
+                                    IsError = true,
+                                    ErrorMessage = "logged in user is group owner of other non empty group",
+                                };
+                                return Results.Json(response);
+                            }
+                        }
+
+
                         // Read GroupMemberRequest for userId and groupId
                         GroupMemberRequest groupMemberRequest = await db.GroupMemberRequest
                             .Where(x => x.GroupId == groupId && x.UserId == userId)
@@ -951,7 +1036,7 @@ where
                             return Results.Json(response);
                         }
 
-                        // Read GroupMember for userId and groupId
+                        // Check  if user is already group member
                         GroupMember groupMember = await db.GroupMember
                             .Where(x => x.GroupId == groupId && x.UserId == userId)
                             .FirstOrDefaultAsync();
@@ -967,22 +1052,6 @@ where
                             return Results.Json(response);
                         }
 
-                        // Read GroupMember for userId and any other groupId
-                        GroupMember groupMemberOther = await db.GroupMember
-                            .Where(x => x.UserId == userId && x.GroupId != groupId)
-                            .FirstOrDefaultAsync();
-                        if (groupMemberOther != null)
-                        {
-                            transaction.Rollback();
-                            Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: user is already member of other group, groupId: {groupMemberOther.GroupId}, userId {userId}");
-                            response = new AcceptFriendRequestResponse
-                            {
-                                IsError = true,
-                                ErrorMessage = "lready member of other group",
-                            };
-                            return Results.Json(response);
-                        }
-
                         // Create GroupMember
                         var groupMemberNew = new GroupMember
                         {
@@ -991,6 +1060,7 @@ where
                         };
                         db.GroupMember.Add(groupMemberNew);
 
+                        // User can be member oly one and only one group at a time.
                         // Remove all pending GroupMemberRequest entries for this user (including the accepted one)
                         var pendingRequests = await db.GroupMemberRequest
                             .Where(x => x.UserId == userId)
