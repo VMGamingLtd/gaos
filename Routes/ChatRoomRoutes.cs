@@ -94,13 +94,20 @@ namespace Gaos.Routes
                             }
 
                             // Verify if user is a member of the chat room
-                            bool isFriends = false;
+                            bool canWrite = false;
                             if (chatRoom.IsFriedndsChatroom)
                             {
-                                // verify if chatroom owner and user are friends
-                                isFriends = await FriendRoutes.UsersAreFriends(dataSource, userService.GetUserId(), chatRoom.OwnerId);
+                                if (userService.GetUserId() == chatRoom.OwnerId)
+                                {
+                                    canWrite = true;
+                                }
+                                else
+                                {
+                                    // verify if chatroom owner and user are friends
+                                    canWrite = await FriendRoutes.UsersAreFriends(dataSource, userService.GetUserId(), chatRoom.OwnerId);
+                                }
                             }
-                            if (!isFriends)
+                            if (!canWrite)
                             {
                                 ChatRoomMember chatRoomMember = await db.ChatRoomMember.FirstOrDefaultAsync(x => x.ChatRoomId == writeMessageRequest.ChatRoomId && x.UserId == userService.GetUserId());
                                 if (chatRoomMember == null)
@@ -114,7 +121,7 @@ namespace Gaos.Routes
                                     };
                                     return Results.Json(response);
                                 }
-                                isFriends = true;
+                                canWrite = true;
                             }
 
                             Gaos.Dbo.Model.User user = userService.GetUser();
@@ -197,13 +204,20 @@ namespace Gaos.Routes
                     }
 
                     // Verify if user is a member of the chat room
-                    bool isFriends = false;
+                    bool canRead = false;
                     if (chatRoom.IsFriedndsChatroom)
                     {
-                        // verify if chatroom owner and user are friends
-                        isFriends = await FriendRoutes.UsersAreFriends(dataSource, userService.GetUserId(), chatRoom.OwnerId);
+                        if (userService.GetUserId() == chatRoom.OwnerId)
+                        {
+                            canRead = true;
+                        }
+                        else
+                        {
+                            // verify if chatroom owner and user are friends
+                            canRead = await FriendRoutes.UsersAreFriends(dataSource, userService.GetUserId(), chatRoom.OwnerId);
+                        }
                     }
-                    if (!isFriends)
+                    if (!canRead)
                     {
                         ChatRoomMember chatRoomMember = await db.ChatRoomMember.FirstOrDefaultAsync(x => x.ChatRoomId == readMessagesRequest.ChatRoomId && x.UserId == userService.GetUserId());
                         if (chatRoomMember == null)
@@ -216,7 +230,7 @@ namespace Gaos.Routes
                             };
                             return Results.Json(response);
                         }
-                        isFriends = true;
+                        canRead = true;
                     }
 
                     using (var transaction = db.Database.BeginTransaction())
@@ -315,13 +329,20 @@ namespace Gaos.Routes
                     }
 
                     // Verify if user is a member of the chat room
-                    bool isFriends = false;
+                    bool canRead = false;
                     if (chatRoom.IsFriedndsChatroom)
                     {
-                        // verify if chatroom owner and user are friends
-                        isFriends = await FriendRoutes.UsersAreFriends(dataSource, userService.GetUserId(), chatRoom.OwnerId);
+                        if (userService.GetUserId() == chatRoom.OwnerId)
+                        {
+                            canRead = true;
+                        }
+                        else
+                        {
+                            // verify if chatroom owner and user are friends
+                            canRead = await FriendRoutes.UsersAreFriends(dataSource, userService.GetUserId(), chatRoom.OwnerId);
+                        }
                     }
-                    if (!isFriends)
+                    if (!canRead)
                     {
                         ChatRoomMember chatRoomMember = await db.ChatRoomMember.FirstOrDefaultAsync(x => x.ChatRoomId == readMessagesBackwardsRequest.ChatRoomId && x.UserId == userService.GetUserId());
                         if (chatRoomMember == null)
@@ -334,7 +355,7 @@ namespace Gaos.Routes
                             };
                             return Results.Json(response);
                         }
-                        isFriends = true;
+                        canRead = true;
                     }
 
                     using (var transaction = db.Database.BeginTransaction())
@@ -720,7 +741,7 @@ namespace Gaos.Routes
                         response = new AddMemberResponse
                         {
                             IsError = true,
-                            ErrorMessage = "unauthorized (chat room owner can removen any member, member can remove itself)",
+                            ErrorMessage = "unauthorized (chat room owner can remove any member, member can remove itself)",
                         };
                         return Results.Json(response);
                     }
@@ -748,6 +769,100 @@ namespace Gaos.Routes
                     };
                     return Results.Json(response);
                 }
+            });
+
+            group.MapPost("/getUserToFriendChatRoom", async (GetUserToFriendChatRoomRequest getUserToFriendChatRoomRequest, Db db, Gaos.Common.UserService userService) =>
+            {
+                const string METHOD_NAME = "chatRoom/getUserToFriendChatRoom";
+                using (var transaction = db.Database.BeginTransaction())
+                {
+                    Log.Information("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 2348");
+                    GetUserToFriendChatRoomResponse response;
+                    try
+                    {
+                        User user = userService.GetUser();
+                        User friend = await db.User
+                            .Where(x => x.Id == getUserToFriendChatRoomRequest.FriendId)
+                            .FirstAsync();
+                        if (friend == null)
+                        {
+                            transaction.Rollback();
+                            Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: no such friend: {getUserToFriendChatRoomRequest.FriendId}");
+                            response = new GetUserToFriendChatRoomResponse
+                            {
+                                IsError = true,
+                                ErrorMessage = "no such friend",
+                            };
+                            return Results.Json(response);
+                        }
+
+                        string chatRoomName1 = $"Friends_{user.Name}_{friend.Name}";
+                        string chatRoomName2 = $"Friends_{friend.Name}_{user.Name}";
+
+                        // try to read chat room 1 id
+                        string chatRoomName = chatRoomName1;
+                        int chatRoomId = db.ChatRoom
+                            .Where(x => x.Name == chatRoomName)
+                            .Select(x => x.Id)
+                            .FirstOrDefault();
+                        if (chatRoomId == 0)
+                        {
+                            // try to read chat room 2 id
+                            chatRoomName = chatRoomName2;
+                            chatRoomId = db.ChatRoom
+                                .Where(x => x.Name == chatRoomName)
+                                .Select(x => x.Id)
+                                .FirstOrDefault();
+                            if (chatRoomId == 0)
+                            {
+                                chatRoomName = chatRoomName1;
+                                // create chat room
+                                var chatRoom = new ChatRoom
+                                {
+                                    Name = chatRoomName,
+                                    OwnerId = user.Id,
+                                    IsFriedndsChatroom = true,
+                                };
+                                db.ChatRoom.Add(chatRoom);
+                                await db.SaveChangesAsync();
+                                chatRoomId = chatRoom.Id;
+                            }
+                        }
+                        if (chatRoomId == 0)
+                        {
+                            transaction.Rollback();
+                            Log.Error($"{CLASS_NAME}:{METHOD_NAME}: error: chatRoomId is 0");
+                            response = new GetUserToFriendChatRoomResponse
+                            {
+                                IsError = true,
+                                ErrorMessage = "internal error",
+                            };
+                            return Results.Json(response);
+                        }
+
+                        response = new GetUserToFriendChatRoomResponse
+                        {
+                            IsError = false,
+                            ErrorMessage = null,
+                            ChatRoomId = chatRoomId,
+                            ChatRoomName = chatRoomName,
+                        };
+                        transaction.Commit();
+                        return Results.Json(response);
+                    }
+                    catch (Exception ex)
+                    {
+                        transaction.Rollback();
+                        Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
+                        response = new GetUserToFriendChatRoomResponse
+                        {
+                            IsError = true,
+                            ErrorMessage = "internal error",
+                        };
+                        return Results.Json(response);
+                    }
+                }
+
             });
 
 

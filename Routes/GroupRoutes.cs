@@ -12,6 +12,7 @@ using MySqlConnector;
 using System.Security.Cryptography.X509Certificates;
 using Org.BouncyCastle.Security;
 using System.Diagnostics;
+using System.Linq.Expressions;
 
 /*
 User gorups are disjoint a user cannot be member of more then one group.
@@ -1251,6 +1252,7 @@ where
                     }
                 }
             });
+
 
             return group;
 
