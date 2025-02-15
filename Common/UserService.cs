@@ -303,8 +303,9 @@ WHERE gm.UserId = @userId
 $@"
 SELECT 
     g.Id AS ownedGroupId,
-    g.Name AS ownedGroupName
+    u.Name AS ownerName
 FROM Groupp g
+JOIN User u ON g.OwnerId = u.Id
 WHERE g.OwnerId = @userId
     AND EXISTS (SELECT 1 FROM GroupMember gm WHERE gm.GroupId = g.Id)
 ";
@@ -369,14 +370,14 @@ WHERE g.OwnerId = @userId
                     if (isRow)
                     {
                         int ownedGroupId = reader.GetInt32(0);
-                        string ownedGroupName = reader.GetString(1); 
+                        string ownerName = reader.GetString(1); 
                         var getGroupResult = new GetGroupResult
                         {
                             IsGroupOwner = true,
                             IsGroupMember = false,
                             GroupId = ownedGroupId,
                             GroupOwnerId = user.Id,
-                            GroupOwnerName = ownedGroupName
+                            GroupOwnerName = ownerName
                         };
                         this.getGroupResult = getGroupResult;
                         this.isGetGroupResult = true;

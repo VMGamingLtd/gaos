@@ -43,6 +43,48 @@ namespace Gaos.Routes
             public string? GroupOwnerName { get; set; }
         };
 
+        public static async Task<bool> IsGroupMember(MySqlDataSource dataSource, int groupOwnerId, int userId)
+        {
+            const string METHOD_NAME = "IsGroupMember()";
+            var sqlQuery =
+@$"
+SELECT 
+    g.Id AS groupId
+FROM Groupp AS g
+JOIN GroupMember AS gm ON gm.GroupId = g.Id
+WHERE 
+    g.OwnerId = @ownerId AND gm.UserId = @userId;
+";
+            try
+            {
+                using var connection = await dataSource.OpenConnectionAsync();
+                await using var command = connection.CreateCommand();
+                command.CommandText = sqlQuery;
+                command.Parameters.AddWithValue("@ownerId", groupOwnerId);
+                command.Parameters.AddWithValue("@userId", userId);
+                using var reader = await command.ExecuteReaderAsync();
+                
+                int n = 0;
+                bool isMember = false;
+                while (await reader.ReadAsync())
+                {
+                    ++n;
+                    if (n > 1)
+                    {
+                        Log.Error($"{CLASS_NAME}:{METHOD_NAME}: more then one group member, or more then one group found, groupOwnerId: {groupOwnerId}, userId: {userId}");
+                        throw new Exception("internal error");
+                    }
+                    isMember = true;
+                }
+                return isMember;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
+                throw new Exception("internal error");
+            }
+        }
+
         public record GetUsersForFriendsSearchResult(int UserId, string UserName, bool IsFriend, bool IsFriendRequest);
 
         public static async Task<List<GetUsersForFriendsSearchResult>> GetUsersForFriendsSearch(MySqlDataSource dataSource, int userId, int maxCount, string userNamePattern)
@@ -133,136 +175,6 @@ limit  @maxCount
 
         }
 
-    public static async Task<List<GetUsersForFriendsSearchResult>> GetUsersForFriendsSearch_new(MySqlDataSource dataSource, int userId, int maxCount, string userNamePattern)
-    {
-        const string METHOD_NAME = "GetUsersForFriendsSearch()";
-
-        // Select users and if selected user is already a friend of logged in user (identified by method parameter userId) then  FriendId will be not null and equal to the selected user id. 
-        // The friedship to logged in user is determined via membership in group owned by logged in user, any group member is a friend of the group owner.
-        // If there exist for the selected user friend FriendRequestId for logged in user, then FriendRequestId will be not null and equeal to friend request id.
-        
-        // The query now restricts the candidate users to those with an approved friend relationship,
-        // i.e. only those for which there is a record in UserFriend with isFriendAgreement = 1.
-        var sqlQuery = @$"
-    select
-        u.Id as UserId,
-        u.Name as UserName,
-        Friend.Id as FriendId,    
-        FriendRequest.Id as FriendRequestId
-    from
-        User u
-    inner join
-        UserFriend uf
-        on (
-             (
-               (uf.UserId = @userId and uf.FriendId = u.Id)
-               or
-               (uf.FriendId = @userId and uf.UserId = u.Id)
-             )
-             and uf.isFriendAgreement = 1
-           )
-    left join 
-    (
-        select
-            GroupMember.UserId as Id
-        from
-            Groupp
-        join GroupMember on Groupp.Id = GroupMember.GroupId
-        where
-            Groupp.OwnerId = @userId
-    ) as Friend on Friend.Id = u.Id 
-    left join 
-    (
-        select
-            GroupMemberRequest.UserId as Id
-        from
-            Groupp
-        join GroupMemberRequest on Groupp.Id = GroupMemberRequest.GroupId
-        where
-            Groupp.OwnerId = @userId
-    ) as FriendRequest on FriendRequest.Id = u.Id 
-    where
-        u.Name like @userNamePattern
-    limit  @maxCount;
-    ";
-
-        var sqlQuery_restricted = @$"
-    select
-        u.Id as UserId,
-        u.Name as UserName,
-        Friend.Id as FriendId,    
-        FriendRequest.Id as FriendRequestId
-    from
-        User u
-    inner join
-        UserFriend uf
-        on (
-             (
-               (uf.UserId = @userId and uf.FriendId = u.Id)
-               or
-               (uf.FriendId = @userId and uf.UserId = u.Id)
-             )
-             and uf.isFriendAgreement = 1
-           )
-    left join 
-    (
-        select
-            GroupMember.UserId as Id
-        from
-            Groupp
-        join GroupMember on Groupp.Id = GroupMember.GroupId
-        where
-            Groupp.OwnerId = @userId
-    ) as Friend on Friend.Id = u.Id 
-    left join 
-    (
-        select
-            GroupMemberRequest.UserId as Id
-        from
-            Groupp
-        join GroupMemberRequest on Groupp.Id = GroupMemberRequest.GroupId
-        where
-            Groupp.OwnerId = @userId
-    ) as FriendRequest on FriendRequest.Id = u.Id 
-    where
-        u.Name like @userNamePattern
-    limit  @maxCount;
-    ";
-        try
-        {
-            // Build the like pattern – if no filter is provided, return all users.
-            string likePattern = string.IsNullOrEmpty(userNamePattern) ? "%" : $"%{userNamePattern}%";
-
-            using var connection = await dataSource.OpenConnectionAsync();
-            await using var command = connection.CreateCommand();
-            command.CommandText = sqlQuery;
-            command.Parameters.AddWithValue("@userId", userId);
-            command.Parameters.AddWithValue("@userNamePattern", likePattern);
-            command.Parameters.AddWithValue("@maxCount", maxCount);
-
-            using var reader = await command.ExecuteReaderAsync();
-            List<GetUsersForFriendsSearchResult> result = new List<GetUsersForFriendsSearchResult>();
-
-            while (await reader.ReadAsync())
-            {
-                int _UserId = reader.GetInt32(0);
-                string _UserName = reader.GetString(1);
-                // The Friend join returns a non-null value if the user is already in my group.
-                bool isFriend = !reader.IsDBNull(2);
-                // The FriendRequest join returns a non-null value if a group invitation (friend request) exists.
-                bool isFriendRequest = !reader.IsDBNull(3);
-                result.Add(new GetUsersForFriendsSearchResult(_UserId, _UserName, isFriend, isFriendRequest));
-            }
-            reader.Close();
-
-            return result;
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
-            throw new Exception("internal error");
-        }
-    }
 
 
 

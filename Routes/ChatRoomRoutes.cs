@@ -93,6 +93,18 @@ namespace Gaos.Routes
                                 await db.Database.ExecuteSqlRawAsync("DELETE FROM ChatRoomMessage WHERE ChatRoomId = {0} AND MesageId < {1}", writeMessageRequest.ChatRoomId, maxMessageId - MAX_NUMBER_OF_MESSAGES_IN_ROOM);
                             }
 
+                            if (chatRoom.IsFriedndsChatroom && chatRoom.IsGroupChatroom)
+                            {
+                                transaction.Rollback();
+                                Log.Error($"{CLASS_NAME}:{METHOD_NAME}: chat room is both friends and group chat room, chatroom id: {chatRoom.Id}");
+                                response = new WriteMessageResponse
+                                {
+                                    IsError = true,
+                                    ErrorMessage = "chat room is both friends and group chat room",
+                                };
+                                return Results.Json(response);
+                            }
+
                             // Verify if user is a member of the chat room
                             bool canWrite = false;
                             if (chatRoom.IsFriedndsChatroom)
@@ -104,7 +116,19 @@ namespace Gaos.Routes
                                 else
                                 {
                                     // verify if chatroom owner and user are friends
-                                    canWrite = await FriendRoutes.UsersAreFriends(dataSource, userService.GetUserId(), chatRoom.OwnerId);
+                                    canWrite = await db.ChatRoomMember.AnyAsync(x => x.ChatRoomId == writeMessageRequest.ChatRoomId && x.UserId == userService.GetUserId());
+                                }
+                            }
+                            if (chatRoom.IsGroupChatroom)
+                            {
+                                if (userService.GetUserId() == chatRoom.OwnerId)
+                                {
+                                    canWrite = true;
+                                }
+                                else
+                                {
+                                    // verify if user is member of the group
+                                    canWrite = await GroupRoutes.IsGroupMember(dataSource, chatRoom.OwnerId, userService.GetUserId());
                                 }
                             }
                             if (!canWrite)
@@ -203,6 +227,17 @@ namespace Gaos.Routes
 
                     }
 
+                    if (chatRoom.IsFriedndsChatroom && chatRoom.IsGroupChatroom)
+                    {
+                        Log.Error($"{CLASS_NAME}:{METHOD_NAME}: chat room is both friends and group chat room, chatroom id: {chatRoom.Id}");
+                        response = new ReadMessagesResponse
+                        {
+                            IsError = true,
+                            ErrorMessage = "chat room is both friends and group chat room",
+                        };
+                        return Results.Json(response);
+                    }
+
                     // Verify if user is a member of the chat room
                     bool canRead = false;
                     if (chatRoom.IsFriedndsChatroom)
@@ -215,6 +250,18 @@ namespace Gaos.Routes
                         {
                             // verify if chatroom owner and user are friends
                             canRead = await FriendRoutes.UsersAreFriends(dataSource, userService.GetUserId(), chatRoom.OwnerId);
+                        }
+                    }
+                    if (chatRoom.IsGroupChatroom)
+                    {
+                        if (userService.GetUserId() == chatRoom.OwnerId)
+                        {
+                            canRead = true;
+                        }
+                        else
+                        {
+                            // verify if user is member of the group
+                            canRead = await GroupRoutes.IsGroupMember(dataSource, chatRoom.OwnerId, userService.GetUserId());
                         }
                     }
                     if (!canRead)
@@ -328,6 +375,17 @@ namespace Gaos.Routes
 
                     }
 
+                    if (chatRoom.IsFriedndsChatroom && chatRoom.IsGroupChatroom)
+                    {
+                        Log.Error($"{CLASS_NAME}:{METHOD_NAME}: chat room is both friends and group chat room, chatroom id: {chatRoom.Id}");
+                        response = new ReadMessagesBackwardsResponse
+                        {
+                            IsError = true,
+                            ErrorMessage = "chat room is both friends and group chat room",
+                        };
+                        return Results.Json(response);
+                    }
+
                     // Verify if user is a member of the chat room
                     bool canRead = false;
                     if (chatRoom.IsFriedndsChatroom)
@@ -340,6 +398,18 @@ namespace Gaos.Routes
                         {
                             // verify if chatroom owner and user are friends
                             canRead = await FriendRoutes.UsersAreFriends(dataSource, userService.GetUserId(), chatRoom.OwnerId);
+                        }
+                    }
+                    if (chatRoom.IsGroupChatroom)
+                    {
+                        if (userService.GetUserId() == chatRoom.OwnerId)
+                        {
+                            canRead = true;
+                        }
+                        else
+                        {
+                            // verify if user is member of the group
+                            canRead = await GroupRoutes.IsGroupMember(dataSource, chatRoom.OwnerId, userService.GetUserId());
                         }
                     }
                     if (!canRead)
@@ -503,10 +573,22 @@ namespace Gaos.Routes
                 {
                     if (createChatRoomRequest.ChatRoomName == null || createChatRoomRequest.ChatRoomName == "")
                     {
+                        Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: parameter ChatRoomName is empty");
                         response = new CreateChatRoomResponse
                         {
                             IsError = true,
                             ErrorMessage = "parameter ChatRoomName is empty",
+                        };
+                        return Results.Json(response);
+                    }
+
+                    if (createChatRoomRequest.IsFriedndsChatroom == true && createChatRoomRequest.IsGroupChatroom == true)
+                    {
+                        Log.Warning($"{CLASS_NAME}:{METHOD_NAME}: both IsFriedndsChatroom and IsGroupChatroom are true");
+                        response = new CreateChatRoomResponse
+                        {
+                            IsError = true,
+                            ErrorMessage = "both IsFriedndsChatroom and IsGroupChatroom are true",
                         };
                         return Results.Json(response);
                     }
@@ -519,6 +601,7 @@ namespace Gaos.Routes
                             {
                                 Name = createChatRoomRequest.ChatRoomName,
                                 IsFriedndsChatroom = (bool)createChatRoomRequest.IsFriedndsChatroom,
+                                IsGroupChatroom = (bool)createChatRoomRequest.IsGroupChatroom,
                                 OwnerId = userService.GetUserId(),
                             };
 
@@ -776,7 +859,6 @@ namespace Gaos.Routes
                 const string METHOD_NAME = "chatRoom/getUserToFriendChatRoom";
                 using (var transaction = db.Database.BeginTransaction())
                 {
-                    Log.Information("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ cp 2348");
                     GetUserToFriendChatRoomResponse response;
                     try
                     {
@@ -822,6 +904,7 @@ namespace Gaos.Routes
                                     Name = chatRoomName,
                                     OwnerId = user.Id,
                                     IsFriedndsChatroom = true,
+                                    IsGroupChatroom = false,
                                 };
                                 db.ChatRoom.Add(chatRoom);
                                 await db.SaveChangesAsync();
@@ -855,6 +938,84 @@ namespace Gaos.Routes
                         transaction.Rollback();
                         Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
                         response = new GetUserToFriendChatRoomResponse
+                        {
+                            IsError = true,
+                            ErrorMessage = "internal error",
+                        };
+                        return Results.Json(response);
+                    }
+                }
+
+            });
+
+            group.MapPost("/getGroupChatRoom", async (GetGroupChatRoomRequest getUserToFriendChatRoomRequest, Db db, Gaos.Common.UserService userService) =>
+            {
+                const string METHOD_NAME = "chatRoom/getGroupChatRoom";
+                using (var transaction = db.Database.BeginTransaction())
+                {
+                    GetGroupChatRoomResponse response;
+                    try
+                    {
+                        User user = userService.GetUser();
+
+
+                        Common.UserService.GetGroupResult myGroup = await userService.GetUserGroup();
+                        string chatRoomName = $"Group_{user.Name}";
+                        if (myGroup == null)
+                        {
+                            chatRoomName = $"Group_{user.Name}";
+                        }
+                        else
+                        {
+                            chatRoomName = $"Group_{myGroup.GroupOwnerName}";
+                        }
+
+                        // try to read chat room  id
+                        int chatRoomId = db.ChatRoom
+                            .Where(x => x.Name == chatRoomName)
+                            .Select(x => x.Id)
+                            .FirstOrDefault();
+                        if (chatRoomId == 0)
+                        {
+                            // create chat room
+                            var chatRoom = new ChatRoom
+                            {
+                                Name = chatRoomName,
+                                OwnerId = user.Id,
+                                IsFriedndsChatroom = false,
+                                IsGroupChatroom = true,
+                            };
+                            db.ChatRoom.Add(chatRoom);
+                            await db.SaveChangesAsync();
+                            chatRoomId = chatRoom.Id;
+                        }
+                        if (chatRoomId == 0)
+                        {
+                            transaction.Rollback();
+                            Log.Error($"{CLASS_NAME}:{METHOD_NAME}: error: chatRoomId is 0");
+                            response = new GetGroupChatRoomResponse
+                            {
+                                IsError = true,
+                                ErrorMessage = "internal error",
+                            };
+                            return Results.Json(response);
+                        }
+
+                        response = new GetGroupChatRoomResponse
+                        {
+                            IsError = false,
+                            ErrorMessage = null,
+                            ChatRoomId = chatRoomId,
+                            ChatRoomName = chatRoomName,
+                        };
+                        transaction.Commit();
+                        return Results.Json(response);
+                    }
+                    catch (Exception ex)
+                    {
+                        transaction.Rollback();
+                        Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
+                        response = new GetGroupChatRoomResponse
                         {
                             IsError = true,
                             ErrorMessage = "internal error",

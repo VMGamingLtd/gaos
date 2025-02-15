@@ -8,5 +8,6 @@ namespace Gaos.Routes.Model.ChatRoomJson
     {
         public string? ChatRoomName { get; set; }
         public bool? IsFriedndsChatroom { get; set; }
+        public bool? IsGroupChatroom { get; set; }
     }
 }
