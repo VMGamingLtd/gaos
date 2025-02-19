@@ -227,6 +227,43 @@ namespace Gaos.Routes
             }
         }
 
+        public static async Task<int> GetCountOfFriendRequestsToMe(MySqlDataSource dataSource, int userId)
+        {
+            const string METHOD_NAME = "GetCountOfFriendRequestsToMe()";
+
+            // SQL Query to count pending requests for the given user
+            var sqlQuery = @"
+                SELECT
+                    COUNT(*)
+                FROM
+                    UserFriend uf
+                WHERE
+                    uf.FriendId = @UserId
+                    AND uf.IsFriendAgreement = 0;
+            ";
+
+            try
+            {
+                using var connection = await dataSource.OpenConnectionAsync();
+                using var command = connection.CreateCommand();
+                command.CommandText = sqlQuery;
+
+                // Parameter binding
+                command.Parameters.AddWithValue("@UserId", userId);
+
+                // Execute scalar to get single numeric result
+                var resultObj = await command.ExecuteScalarAsync();
+                int count = Convert.ToInt32(resultObj);
+
+                return count;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
+                throw new Exception("Internal error retrieving count of friend requests");
+            }
+        }
+
         public static async Task<bool> UsersAreFriends(MySqlDataSource dataSource, int userId1, int userId2)
         {
             const string METHOD_NAME = "UsersAreFriends()";
@@ -345,6 +382,37 @@ namespace Gaos.Routes
                         IsError = true,
                         ErrorMessage = "Internal error",
                         FriendRequest = Array.Empty<FriendRequest>()
+                    };
+                    return Results.Json(response);
+                }
+            });
+
+            group.MapPost("/getCountOfFriendRequests", async (Model.FriendJson.GetCountOfFriendRequestsRequest request, MySqlDataSource dataSource, Gaos.Common.UserService userService) =>
+            {
+                const string METHOD_NAME = "friends/getCountOfFriendRequests";
+
+                try
+                {
+                    var user = userService.GetUser();
+
+                    var countOfPendingRequests = await GetCountOfFriendRequestsToMe(dataSource, user.Id);
+
+
+                    var response = new Model.FriendJson.GetCountOfFriendRequestsResponse
+                    {
+                        Count = countOfPendingRequests
+                    };
+
+                    return Results.Json(response);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, $"{METHOD_NAME}: error: {ex.Message}");
+
+                    var response = new Model.FriendJson.GetCountOfFriendRequestsResponse
+                    {
+                        IsError = true,
+                        ErrorMessage = "Internal error",
                     };
                     return Results.Json(response);
                 }

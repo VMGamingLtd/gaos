@@ -28,6 +28,7 @@
         public DbSet<Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey> DataProtectionKeys => Set<Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey>();
         public DbSet<ChatRoom> ChatRoom => Set<ChatRoom>();
         public DbSet<ChatRoomMember> ChatRoomMember => Set<ChatRoomMember>();
+        public DbSet<ChatRoomUser> ChatRoomUser => Set<ChatRoomUser>();
         public DbSet<ChatRoomMessage> ChatRoomMessage => Set<ChatRoomMessage>();
         public DbSet<Groupp> Groupp => Set<Groupp>();
         public DbSet<GroupMember> GroupMember => Set<GroupMember>();
@@ -108,6 +109,12 @@
             modelBuilder.Entity<ChatRoomMember>().HasOne(e => e.ChatRoom).WithMany().HasForeignKey(e => e.ChatRoomId);
             modelBuilder.Entity<ChatRoomMember>().HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
             modelBuilder.Entity<ChatRoomMember>().HasIndex(e => new { e.ChatRoomId, e.UserId }).IsUnique(true);
+
+            // ChatRoomUser
+            modelBuilder.Entity<ChatRoomUser>().HasKey(e => e.Id);
+            modelBuilder.Entity<ChatRoomUser>().HasOne(e => e.ChatRoom).WithMany().HasForeignKey(e => e.ChatRoomId);
+            modelBuilder.Entity<ChatRoomUser>().HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
+            modelBuilder.Entity<ChatRoomUser>().HasIndex(e => new { e.ChatRoomId, e.UserId }).IsUnique(true);
 
             // ChatRoomMessage
             modelBuilder.Entity<ChatRoomMessage>().HasKey(e => e.Id);

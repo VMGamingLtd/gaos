@@ -9,6 +9,8 @@ using Gaos.Dbo;
 using Gaos.Routes.Model.ChatRoomJson;
 using Gaos.Dbo.Model;
 using MySqlConnector;
+using System.Runtime.CompilerServices;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
 
 namespace Gaos.Routes
 {
@@ -18,6 +20,89 @@ namespace Gaos.Routes
         public static int MAX_NUMBER_OF_MESSAGES_IN_ROOM = 100;
 
         public static string CLASS_NAME = typeof(ChatRoomRoutes).Name;
+
+        public static async Task UpdateLastMessageReadId(MySqlDataSource dataSource, int chatRoomId, int userId, int lastMessageReadId)
+        {
+            const string METHOD_NAME = nameof(UpdateLastMessageReadId);
+
+            // Make sure you have a UNIQUE INDEX (ChatRoomId, UserId) on ChatRoomUser!
+            var sqlQuery = @"
+            INSERT INTO 
+                ChatRoomUser (ChatRoomId, UserId, LastReadMessageId)
+            VALUES 
+                (@ChatRoomId, @UserId, @LastReadMessageId)
+            ON DUPLICATE KEY UPDATE
+                LastReadMessageId = VALUES(LastReadMessageId);
+            ";
+
+            try
+            {
+                using var connection = await dataSource.OpenConnectionAsync();
+                using var command = connection.CreateCommand();
+                command.CommandText = sqlQuery;
+
+                command.Parameters.AddWithValue("@ChatRoomId", chatRoomId);
+                command.Parameters.AddWithValue("@UserId", userId);
+                command.Parameters.AddWithValue("@LastReadMessageId", lastMessageReadId);
+
+                await command.ExecuteNonQueryAsync();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
+                throw new Exception("Internal error updating last read message ID.");
+            }
+        }
+
+        public static async Task<int> GetCountOfUnreadMessages(MySqlDataSource dataSource, int chatRoomId, int userId)
+        {
+            const string METHOD_NAME = nameof(GetCountOfUnreadMessages);
+
+            var sqlQuery = $@"
+                SELECT 
+                    COUNT(*) AS UnreadCount
+                FROM 
+                    ChatRoomMessage cm
+                LEFT JOIN 
+                    ChatRoomUser cu ON cu.ChatRoomId = cm.ChatRoomId AND cu.UserId = @UserId
+                WHERE 
+                    cm.ChatRoomId = @ChatRoomId
+                    AND (cu.UserId IS NULL OR cm.MessageId > cu.LastReadMessageId)
+            ";
+
+            try
+            {
+                using var connection = await dataSource.OpenConnectionAsync();
+                using var command = connection.CreateCommand();
+                command.CommandText = sqlQuery;
+
+                command.Parameters.AddWithValue("@ChatRoomId", chatRoomId);
+                command.Parameters.AddWithValue("@UserId", userId);
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                int count = 0;
+                if (await reader.ReadAsync())
+                {
+                     count = (int)reader.GetInt64("UnreadCount"); 
+                }
+                else
+                {
+                    count = 0;
+                }
+
+                return count;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: {ex.Message}");
+                throw new Exception("Internal error retrieving unread message counts.", ex);
+            }
+        }
+
+
+
+
         public static RouteGroupBuilder GroupChatRoom(this RouteGroupBuilder group)
         {
             group.MapGet("/hello", (Db db) => "hello");
@@ -69,7 +154,7 @@ namespace Gaos.Routes
                                 maxMessageId = 0;
                             }
                             else
-                            { 
+                            {
                                 minMessageId = await db.ChatRoomMessage.Where(x => x.ChatRoomId == writeMessageRequest.ChatRoomId).MinAsync(x => x.MessageId);
                                 maxMessageId = await db.ChatRoomMessage.Where(x => x.ChatRoomId == writeMessageRequest.ChatRoomId).MaxAsync(x => x.MessageId);
                             }
@@ -116,7 +201,7 @@ namespace Gaos.Routes
                                 else
                                 {
                                     // verify if chatroom owner and user are friends
-                                    canWrite = await db.ChatRoomMember.AnyAsync(x => x.ChatRoomId == writeMessageRequest.ChatRoomId && x.UserId == userService.GetUserId());
+                                    canWrite = await FriendRoutes.UsersAreFriends(dataSource, userService.GetUserId(), chatRoom.OwnerId);
                                 }
                             }
                             if (chatRoom.IsGroupChatroom)
@@ -193,8 +278,8 @@ namespace Gaos.Routes
                         }
                     }
                 }
-                catch (Exception ex) 
-                { 
+                catch (Exception ex)
+                {
                     Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
                     WriteMessageResponse response = new WriteMessageResponse
                     {
@@ -203,10 +288,10 @@ namespace Gaos.Routes
                     };
                     return Results.Json(response);
                 }
-                
+
             });
 
-            group.MapPost("/readMessages", async (ReadMessagesRequest readMessagesRequest, Db db, MySqlDataSource dataSource,  Gaos.Common.UserService userService) =>
+            group.MapPost("/readMessages", async (ReadMessagesRequest readMessagesRequest, Db db, MySqlDataSource dataSource, Gaos.Common.UserService userService) =>
             {
                 const string METHOD_NAME = "chatRoom/readMessages";
                 ReadMessagesResponse response;
@@ -294,7 +379,7 @@ namespace Gaos.Routes
                                 maxMessageId = 0;
                             }
                             else
-                            { 
+                            {
                                 minMessageId = await db.ChatRoomMessage.Where(x => x.ChatRoomId == readMessagesRequest.ChatRoomId).MinAsync(x => x.MessageId);
                                 maxMessageId = await db.ChatRoomMessage.Where(x => x.ChatRoomId == readMessagesRequest.ChatRoomId).MaxAsync(x => x.MessageId);
                             }
@@ -313,6 +398,11 @@ namespace Gaos.Routes
                                     UserId = chatRoomMessages[i].UserId,
                                     UserName = chatRoomMessages[i].ChatRoomMemberName,
                                 };
+                            }
+
+                            if (chatRoomMessages.Length > 0)
+                            {
+                                await UpdateLastMessageReadId(dataSource, readMessagesRequest.ChatRoomId, userService.GetUserId(), chatRoomMessages[chatRoomMessages.Length - 1].MessageId);
                             }
 
                             // Return response
@@ -340,7 +430,7 @@ namespace Gaos.Routes
                     }
 
 
-                    
+
                 }
                 catch (Exception ex)
                 {
@@ -428,10 +518,13 @@ namespace Gaos.Routes
                         canRead = true;
                     }
 
+
                     using (var transaction = db.Database.BeginTransaction())
                     {
                         try
-                        { 
+                        {
+                            int lastMessageReadId = await db.ChatRoomUser.Where(x => x.ChatRoomId == readMessagesBackwardsRequest.ChatRoomId && x.UserId == userService.GetUserId()).Select(x => x.LastReadMessageId).FirstOrDefaultAsync();
+
                             // Read minimal and maximal message id
                             int minMessageId;
                             int maxMessageId;
@@ -442,7 +535,7 @@ namespace Gaos.Routes
                                 maxMessageId = 0;
                             }
                             else
-                            { 
+                            {
                                 minMessageId = await db.ChatRoomMessage.Where(x => x.ChatRoomId == readMessagesBackwardsRequest.ChatRoomId).MinAsync(x => x.MessageId);
                                 maxMessageId = await db.ChatRoomMessage.Where(x => x.ChatRoomId == readMessagesBackwardsRequest.ChatRoomId).MaxAsync(x => x.MessageId);
                             }
@@ -473,6 +566,11 @@ namespace Gaos.Routes
                                 };
                             }
 
+                            if (chatRoomMessages.Length > 0)
+                            {
+                                await UpdateLastMessageReadId(dataSource, readMessagesBackwardsRequest.ChatRoomId, userService.GetUserId(), chatRoomMessages[chatRoomMessages.Length - 1].MessageId);
+                            }
+
                             // Return response
                             response = new ReadMessagesBackwardsResponse
                             {
@@ -498,12 +596,44 @@ namespace Gaos.Routes
                     }
 
 
-                    
+
                 }
                 catch (Exception ex)
                 {
                     Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
                     response = new ReadMessagesBackwardsResponse
+                    {
+                        IsError = true,
+                        ErrorMessage = "internal error",
+                    };
+                    return Results.Json(response);
+                }
+            });
+
+            group.MapPost("/getUnreadMessagesCount", async (GetUnreadMessagesCountRequest getUnreadMessagesCountRequest, Db db, MySqlDataSource dataSource, Gaos.Common.UserService userService) =>
+            {
+                const string METHOD_NAME = "chatRoom/getUnreadMessagesCount";
+                GetUnreadMessagesCountResponse response;
+                try
+                {
+                    int chatRoomId = getUnreadMessagesCountRequest.ChatRoomId;
+                    int userId = getUnreadMessagesCountRequest.UserId;
+
+                    int count = await GetCountOfUnreadMessages(dataSource, chatRoomId, userId);
+
+                    response = new GetUnreadMessagesCountResponse
+                    {
+                        IsError = false,
+                        userId = userId,
+                        count = count,
+                    };
+
+                    return Results.Json(response);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, $"{CLASS_NAME}:{METHOD_NAME}: error: {ex.Message}");
+                    response = new GetUnreadMessagesCountResponse
                     {
                         IsError = true,
                         ErrorMessage = "internal error",
@@ -699,7 +829,7 @@ namespace Gaos.Routes
                         IsError = false,
                     };
                     return Results.Json(response);
-                    
+
 
                 }
                 catch (Exception ex)
@@ -758,7 +888,7 @@ namespace Gaos.Routes
                         };
                         return Results.Json(response);
                     }
-                    
+
 
                     // Add member to chat room
                     ChatRoomMember chatRoomMember = new ChatRoomMember
