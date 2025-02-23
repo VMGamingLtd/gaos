@@ -241,7 +241,7 @@ namespace Gaos.wsrv
                     // Connection successful
                     await connectTask; // Ensure the task is completed
                     clientPool.Add(client);
-                    Log.Error($"{CLASS_NAME}:{METHOD_NAME}: INFO: Client connected and added to pool, pool size {clientPool.Count}");
+                    Log.Information($"{CLASS_NAME}:{METHOD_NAME}: INFO: Client connected and added to pool, pool size {clientPool.Count}");
                     return true;
                 }
                 else

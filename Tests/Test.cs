@@ -122,7 +122,7 @@ namespace Gaos.Tests
         static void TestEncryptionHelper_2()
         {
 
-            string encrypted = "xxxxxxxxxxx";
+            string encrypted = "";
 
             string decrypted = Gaos.Encryption.EncryptionHelper.Decrypt(encrypted);
             Console.WriteLine($"Decrypted: {decrypted}");
@@ -136,8 +136,8 @@ namespace Gaos.Tests
                 //TestJsonIsEqual();
                 //TestMergeBug();
                 //TestEncryptionHelper();
-                TestEncryptionHelper_1();
-                //TestEncryptionHelper_2();
+                //TestEncryptionHelper_1();
+                TestEncryptionHelper_2();
             }
         }
     }
