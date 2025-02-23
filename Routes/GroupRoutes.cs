@@ -102,6 +102,9 @@ select
     FriendRequest.Id as FriendRequestId
 from
     User
+join UserFriend on 
+    (User.Id = @userId and UserFriend.FriendId = User.Id and UserFriend.IsFriendAgreement > 0) or
+    (User.Id = UserFriend.UserId and UserFriend.FriendId = @userId and UserFriend.IsFriendAgreement > 0)
 left join 
 (
     select
