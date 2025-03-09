@@ -122,7 +122,7 @@ namespace Gaos.Tests
         static void TestEncryptionHelper_2()
         {
 
-            string encrypted = "";
+            string encrypted = "LWN0VOySHL1MffQ=:QAE+gVhO7EkNKnBT:y2NXYIq6tIb7BtgFSRn/bA==:VBT5+pzhaePjNlOYfKKgpg==";
 
             string decrypted = Gaos.Encryption.EncryptionHelper.Decrypt(encrypted);
             Console.WriteLine($"Decrypted: {decrypted}");
